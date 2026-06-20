@@ -56,9 +56,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Category name')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
-                SwitchListTile(value: active, onChanged: (v) => setLocal(() => active = v), title: const Text('Active')),
+                SwitchListTile(contentPadding: EdgeInsets.zero, value: active, onChanged: (v) => setLocal(() => active = v), title: const Text('Active')),
               ],
             ),
           ),
@@ -97,8 +97,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       final goCategory = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Category required'),
-          content: const Text('Expense add korar age at least one expense category create korte hobe.'),
+          title: const Text('Category Required'),
+          content: const Text('Please create an expense category before adding expenses.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
             FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add Category')),
@@ -132,22 +132,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   items: categories.map((c) => DropdownMenuItem<int>(value: int.parse(c['id'].toString()), child: Text(c['name'].toString()))).toList(),
                   onChanged: (v) => setLocal(() => categoryId = v ?? categoryId),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(controller: amountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount')),
-                const SizedBox(height: 8),
-                TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date YYYY-MM-DD')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
+                const SizedBox(height: 12),
                 TextField(controller: methodCtrl, decoration: const InputDecoration(labelText: 'Payment method')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const ['pending', 'approved', 'rejected'].map((s) => DropdownMenuItem<String>(value: s, child: Text(s))).toList(),
                   onChanged: (v) => setLocal(() => status = v ?? status),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(controller: refCtrl, decoration: const InputDecoration(labelText: 'Reference')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(controller: notesCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
               ],
             ),
@@ -188,8 +188,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Expenses'),
+        title: const Text('Expenses', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
           IconButton(onPressed: _openCategoriesPage, icon: const Icon(Icons.category_outlined), tooltip: 'Expense Categories'),
@@ -219,42 +222,33 @@ class _ExpensesPageState extends State<ExpensesPage> {
           final categories = (categoriesMap['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
 
           return ListView(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             children: [
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.account_tree_outlined, color: AppTheme.primary),
-                  title: const Text('Dependency: Expense Category', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(categories.isEmpty ? 'Expense add korar age category create korte hobe.' : '${categories.length} category available'),
-                  trailing: FilledButton.tonal(onPressed: _openCategoriesPage, child: const Text('Manage')),
-                ),
-              ),
-              const SizedBox(height: 10),
               if (categories.isEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('No expense category found', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                        const SizedBox(height: 6),
-                        const Text('Example category: Office Rent, Packaging, Delivery Cost, Staff Salary.'),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(onPressed: () => _categoryDialog(), icon: const Icon(Icons.add), label: const Text('Add Expense Category')),
-                      ],
-                    ),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                    children: [
+                      const Text('Setup required', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      const Text('You need to create at least one category before adding expenses (e.g., Rent, Salaries).', textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(onPressed: () => _categoryDialog(), icon: const Icon(Icons.add), label: const Text('Add Category')),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 14),
-              const Text('Expenses', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-              const SizedBox(height: 6),
-              if (expenses.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No expense found.'))),
-              ...expenses.map((expense) => Card(
+              const SizedBox(height: 16),
+              const Text('Recent Expenses', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              const SizedBox(height: 12),
+              if (expenses.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No expenses found.'))),
+              ...expenses.map((expense) => Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
                     child: ListTile(
-                      title: Text('৳ ${expense['amount']} • ${expense['category_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      title: Text('৳ ${expense['amount']} • ${expense['category_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800)),
                       subtitle: Text('${expense['expense_date']} • ${expense['payment_method']} • ${expense['status']}'),
-                      trailing: const Icon(Icons.edit),
+                      trailing: const Icon(Icons.edit_outlined, size: 20),
                       onTap: () => _expenseDialog(categories, expense),
                     ),
                   )),

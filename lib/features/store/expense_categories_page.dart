@@ -51,14 +51,14 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
                   decoration: const InputDecoration(labelText: 'Category name'),
                   textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 TextField(
                   controller: descCtrl,
                   decoration: const InputDecoration(labelText: 'Description'),
                   minLines: 1,
                   maxLines: 3,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: active,
@@ -126,8 +126,11 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Expense Categories'),
+        title: const Text('Expense Categories', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh))],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -142,6 +145,7 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
           if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
 
           final categories = (snapshot.data?['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+          
           if (categories.isEmpty) {
             return Center(
               child: Padding(
@@ -149,13 +153,13 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.category_outlined, size: 52, color: AppTheme.primary),
-                    const SizedBox(height: 12),
-                    const Text('No expense category yet', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                    const SizedBox(height: 8),
-                    const Text('Expense add korar age category create korte hobe. Example: Office Rent, Packaging, Delivery Cost.'),
+                    Icon(Icons.category_outlined, size: 64, color: AppTheme.primary.withOpacity(0.5)),
                     const SizedBox(height: 16),
-                    FilledButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: const Text('Add Expense Category')),
+                    const Text('No categories found', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+                    const SizedBox(height: 8),
+                    const Text('Create categories to organize your expenses effectively (e.g., Rent, Salaries, Utilities).', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.muted)),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: const Text('Add Category')),
                   ],
                 ),
               ),
@@ -165,12 +169,14 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
           return RefreshIndicator(
             onRefresh: () async => _refresh(),
             child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 90),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final active = category['is_active'] != false;
-                return Card(
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: active ? AppTheme.primary.withOpacity(.12) : Colors.grey.withOpacity(.15),

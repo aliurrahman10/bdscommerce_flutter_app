@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/config/app_theme.dart';
 import '../../core/models/api_exception.dart';
-import '../../core/state/app_theme_controller.dart';
 import '../../core/state/workspace_controller.dart';
 import '../../shared/widgets/loading_button.dart';
 import '../home/home_shell.dart';
@@ -127,8 +126,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<AppThemeController>();
-    final t = theme.t;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -136,7 +133,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [AppTheme.primary, Color(0xFFF6F8FB)],
-            stops: [.0, .52],
           ),
         ),
         child: SafeArea(
@@ -144,26 +140,26 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 540),
+                constraints: const BoxConstraints(maxWidth: 450),
                 child: Column(
                   children: [
+                    const SizedBox(height: 40),
                     Container(
-                      width: 118,
-                      height: 118,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
-                      child: Image.asset('assets/images/app_logo.png'),
+                      width: 90, height: 90,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                      child: const Center(child: Icon(Icons.business_center, size: 40, color: AppTheme.primary)),
                     ),
-                    const SizedBox(height: 18),
-                    const Text('BDS Commerce', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 6),
-                    Text(t('Portal & Store Admin in one app', 'Portal & Store Admin এক app-এ'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
+                    const Text('BDS Commerce', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 8),
+                    const Text('Portal & Store Admin', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 32),
                     Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFFE2E8F0))),
                       child: Padding(
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.all(24),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             TabBar(
                               controller: _tabController,
@@ -172,7 +168,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               indicatorSize: TabBarIndicatorSize.tab,
                               tabs: const [Tab(text: 'Client Portal'), Tab(text: 'Store Admin')],
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 24),
                             SizedBox(
                               height: 380,
                               child: TabBarView(
@@ -224,26 +220,25 @@ class _PortalLoginForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.watch<AppThemeController>().t;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t('Login to view billing, services and notifications.', 'Billing, service ও notification দেখতে login করুন।'), style: const TextStyle(color: AppTheme.muted)),
-        const SizedBox(height: 16),
-        TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Client email', prefixIcon: Icon(Icons.email_outlined))),
+        const Text('Login to access billing, services and support.', style: TextStyle(color: AppTheme.muted)),
+        const SizedBox(height: 20),
+        TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: _inputDeco('Client Email', Icons.email_outlined)),
         const SizedBox(height: 12),
-        TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline))),
-        const SizedBox(height: 8),
+        TextField(controller: password, obscureText: true, decoration: _inputDeco('Password', Icons.lock_outline)),
+        const SizedBox(height: 16),
         CheckboxListTile(
           dense: true,
           value: remember,
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
-          title: Text(t('Remember email and password', 'Email/password remember রাখুন')),
+          title: const Text('Remember me'),
           onChanged: (value) => onRememberChanged(value ?? true),
         ),
-        const SizedBox(height: 8),
-        LoadingButton(label: t('Login to Portal', 'Portal Login'), loading: loading, onPressed: onSubmit),
+        const SizedBox(height: 20),
+        LoadingButton(label: 'Login to Portal', loading: loading, onPressed: onSubmit),
       ],
     );
   }
@@ -261,29 +256,36 @@ class _StoreLoginForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.watch<AppThemeController>().t;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t('Login to manage orders and store operations.', 'Order ও store operation manage করতে login করুন।'), style: const TextStyle(color: AppTheme.muted)),
+        const Text('Manage your store orders and operations.', style: TextStyle(color: AppTheme.muted)),
+        const SizedBox(height: 20),
+        TextField(controller: tenant, decoration: _inputDeco('Store Slug / Domain', Icons.storefront_outlined)),
+        const SizedBox(height: 12),
+        TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: _inputDeco('Admin Email', Icons.email_outlined)),
+        const SizedBox(height: 12),
+        TextField(controller: password, obscureText: true, decoration: _inputDeco('Password', Icons.lock_outline)),
         const SizedBox(height: 16),
-        TextField(controller: tenant, decoration: const InputDecoration(labelText: 'Store slug / domain', prefixIcon: Icon(Icons.storefront_outlined))),
-        const SizedBox(height: 12),
-        TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Store admin email', prefixIcon: Icon(Icons.email_outlined))),
-        const SizedBox(height: 12),
-        TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline))),
-        const SizedBox(height: 8),
         CheckboxListTile(
           dense: true,
           value: remember,
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
-          title: Text(t('Remember email, password and store', 'Email/password/store remember রাখুন')),
+          title: const Text('Remember credentials'),
           onChanged: (value) => onRememberChanged(value ?? true),
         ),
-        const SizedBox(height: 8),
-        LoadingButton(label: t('Login to Store', 'Store Login'), loading: loading, onPressed: onSubmit),
+        const SizedBox(height: 20),
+        LoadingButton(label: 'Login to Store', loading: loading, onPressed: onSubmit),
       ],
     );
   }
 }
+
+InputDecoration _inputDeco(String label, IconData icon) => InputDecoration(
+  labelText: label,
+  prefixIcon: Icon(icon, size: 20),
+  filled: true,
+  fillColor: const Color(0xFFF8FAFC),
+  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+);
