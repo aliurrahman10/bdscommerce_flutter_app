@@ -272,83 +272,157 @@ class _WorkspaceDrawerState extends State<_WorkspaceDrawer> {
     final preset = theme.selectedPreset;
     final lang = theme.language;
     final t = theme.t;
+    
     return Drawer(
-      width: 286,
+      width: 300,
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: FutureBuilder<AppMeta>(
           future: _loadMeta(workspace),
           builder: (context, snapshot) {
             final copy = snapshot.data?.copy ?? const AppCopy(<String, dynamic>{});
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(9, 9, 9, 12),
+            return Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(gradient: preset.heroGradient, borderRadius: BorderRadius.circular(20), boxShadow: AppTheme.glowShadow(preset.key)),
-                  child: Row(
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     children: [
+                      // Enterprise Floating Header (Fixed preset.primary here)
                       Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), borderRadius: BorderRadius.circular(16)),
-                        child: Image.asset('assets/images/app_logo.png', width: 40, height: 40),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+                        decoration: BoxDecoration(
+                          gradient: preset.heroGradient, 
+                          borderRadius: BorderRadius.circular(24), 
+                          boxShadow: [
+                            BoxShadow(
+                              color: preset.primary.withOpacity(0.25),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            )
+                          ]
+                        ),
+                        child: Row(
                           children: [
-                            const Text('BDS Commerce', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                            Text(workspace.activeMode == AppMode.portal ? 'Client Portal' : 'Store Admin', style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 12, fontWeight: FontWeight.w500)),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white, 
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
+                                ]
+                              ),
+                              child: Image.asset('assets/images/app_logo.png', width: 42, height: 42),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('BDS Commerce', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                                  const SizedBox(height: 3),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(99)
+                                    ),
+                                    child: Text(
+                                      workspace.activeMode == AppMode.portal ? 'Client Portal' : 'Store Admin', 
+                                      style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.5)
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      _SectionHeader(title: t('WORKSPACES', 'WORKSPACES')),
+                      
+                      _DrawerAction(icon: Icons.receipt_long_rounded, title: 'Client Portal', selected: workspace.activeMode == AppMode.portal, enabled: workspace.hasPortalSession, onTap: () => workspace.switchMode(AppMode.portal)),
+                      _DrawerAction(icon: Icons.storefront_rounded, title: workspace.activeStoreSlug ?? 'Store Admin', selected: workspace.activeMode == AppMode.store, enabled: workspace.hasStoreSession, onTap: () => workspace.switchMode(AppMode.store)),
+                      
+                      const SizedBox(height: 20),
+                      _SectionHeader(title: t('HELP & SUPPORT', 'HELP & SUPPORT')),
+                      
+                      _DrawerAction(
+                        icon: Icons.desktop_windows_rounded,
+                        title: copy.localized(lang, 'drawer_desktop_guide', en: 'Desktop Guide', bn: 'Desktop Guide'),
+                        subtitle: copy.localized(lang, 'drawer_desktop_guide_subtitle', en: 'Mobile vs Desktop details', bn: 'Mobile vs Desktop details'),
+                        color: AppTheme.secondary,
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
+                      ),
+                      _DrawerAction(
+                        icon: Icons.call_rounded,
+                        title: copy.localized(lang, 'drawer_emergency_call', en: 'Emergency Call', bn: 'Emergency Call'),
+                        subtitle: copy.localized(lang, 'drawer_emergency_call_subtitle', en: 'Direct technical support', bn: 'Direct technical support'),
+                        color: AppTheme.success,
+                        onTap: () => _call(workspace),
+                      ),
+                      _DrawerAction(
+                        icon: Icons.chat_rounded,
+                        title: copy.localized(lang, 'drawer_whatsapp_support', en: 'WhatsApp Support', bn: 'WhatsApp Support'),
+                        subtitle: copy.localized(lang, 'drawer_whatsapp_support_subtitle', en: 'Quick chat assistance', bn: 'Quick chat assistance'),
+                        color: const Color(0xFF25D366),
+                        onTap: () => _whatsapp(workspace),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      _SectionHeader(title: t('ACCOUNT', 'ACCOUNT')),
+                      
+                      _DrawerAction(icon: Icons.person_rounded, title: t('My Account', 'My Account'), enabled: workspace.hasAnySession, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyAccountPage()))),
+                      _DrawerAction(icon: Icons.add_circle_rounded, title: t('Add another login', 'আরেকটি Login যোগ করুন'), onTap: widget.onAddLogin),
+                      _DrawerAction(
+                        icon: Icons.logout_rounded,
+                        title: t('Logout active mode', 'Active mode logout'),
+                        color: AppTheme.danger,
+                        onTap: () async {
+                          final workspace = context.read<WorkspaceController>();
+                          Navigator.of(context).pop();
+                          await workspace.logoutActive();
+                          if (context.mounted && !workspace.hasAnySession) {
+                            Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
+                          }
+                        },
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _DrawerAction(icon: Icons.receipt_long, title: 'Client Portal', selected: workspace.activeMode == AppMode.portal, enabled: workspace.hasPortalSession, onTap: () => workspace.switchMode(AppMode.portal)),
-                _DrawerAction(icon: Icons.storefront, title: workspace.activeStoreSlug ?? 'Store Admin', selected: workspace.activeMode == AppMode.store, enabled: workspace.hasStoreSession, onTap: () => workspace.switchMode(AppMode.store)),
-                const SizedBox(height: 4),
-                _DrawerAction(
-                  icon: Icons.desktop_windows_rounded,
-                  title: copy.localized(lang, 'drawer_desktop_guide', en: 'Desktop Feature Guide', bn: 'Desktop Feature Guide'),
-                  subtitle: copy.localized(lang, 'drawer_desktop_guide_subtitle', en: 'Mobile coverage and desktop-only features', bn: 'Mobile coverage এবং Desktop-only features'),
-                  color: AppTheme.secondary,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
-                ),
-                _DrawerAction(
-                  icon: Icons.call_rounded,
-                  title: copy.localized(lang, 'drawer_emergency_call', en: 'Emergency Call', bn: 'Emergency Call'),
-                  subtitle: copy.localized(lang, 'drawer_emergency_call_subtitle', en: 'Direct SaaS support call', bn: 'Direct SaaS support call'),
-                  color: AppTheme.success,
-                  onTap: () => _call(workspace),
-                ),
-                _DrawerAction(
-                  icon: Icons.chat_rounded,
-                  title: copy.localized(lang, 'drawer_whatsapp_support', en: 'WhatsApp Support', bn: 'WhatsApp Support'),
-                  subtitle: copy.localized(lang, 'drawer_whatsapp_support_subtitle', en: 'Open urgent support chat', bn: 'Urgent support chat open করুন'),
-                  color: const Color(0xFF25D366),
-                  onTap: () => _whatsapp(workspace),
-                ),
-                const Divider(height: 18),
-                _DrawerAction(icon: Icons.person_outline, title: t('My Account', 'My Account'), enabled: workspace.hasAnySession, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyAccountPage()))),
-                _DrawerAction(icon: Icons.add, title: t('Add another login', 'আরেকটি Login যোগ করুন'), onTap: widget.onAddLogin),
-                _DrawerAction(
-                  icon: Icons.logout,
-                  title: t('Logout active mode', 'Active mode logout'),
-                  color: AppTheme.danger,
-                  onTap: () async {
-                    final workspace = context.read<WorkspaceController>();
-                    Navigator.of(context).pop();
-                    await workspace.logoutActive();
-                    if (context.mounted && !workspace.hasAnySession) {
-                      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
-                    }
-                  },
-                ),
+                
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'BDS Commerce v1.0.0', 
+                    style: TextStyle(color: AppTheme.muted2.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)
+                  ),
+                )
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 14, bottom: 10),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          color: AppTheme.muted2,
+          letterSpacing: 1.5,
         ),
       ),
     );
@@ -368,31 +442,75 @@ class _DrawerAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: selected ? color.withOpacity(0.10) : Colors.white,
+        color: selected ? color.withOpacity(0.06) : Colors.transparent, 
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: selected ? color.withOpacity(0.30) : AppTheme.border),
+          borderRadius: BorderRadius.circular(16), 
         ),
         clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          dense: true,
-          visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-          horizontalTitleGap: 8,
-          minLeadingWidth: 30,
-          enabled: enabled,
-          leading: Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(color: color.withOpacity(enabled ? 0.11 : 0.04), borderRadius: BorderRadius.circular(11)),
-            child: Icon(icon, color: enabled ? color : AppTheme.muted2, size: 17),
-          ),
-          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          subtitle: subtitle == null ? null : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.8, color: AppTheme.muted, fontWeight: FontWeight.w400)),
-          trailing: selected ? Icon(Icons.check_circle_rounded, color: color, size: 20) : const Icon(Icons.chevron_right_rounded, color: AppTheme.muted2, size: 20),
+        child: InkWell(
           onTap: enabled ? onTap : null,
+          child: Stack(
+            children: [
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 10,
+                  bottom: 10,
+                  child: Container(
+                    width: 4,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: const BorderRadius.only(topRight: Radius.circular(4), bottomRight: Radius.circular(4))
+                    ),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: selected ? color.withOpacity(0.15) : (enabled ? color.withOpacity(0.08) : Colors.grey.withOpacity(0.1)), 
+                        borderRadius: BorderRadius.circular(12)
+                      ),
+                      child: Icon(icon, color: enabled ? color : AppTheme.muted2, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title, 
+                            maxLines: 1, 
+                            overflow: TextOverflow.ellipsis, 
+                            style: TextStyle(
+                              fontWeight: selected ? FontWeight.w900 : FontWeight.w700, 
+                              fontSize: 14, 
+                              color: enabled ? (selected ? color : AppTheme.text) : AppTheme.muted
+                            )
+                          ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle!, 
+                              maxLines: 1, 
+                              overflow: TextOverflow.ellipsis, 
+                              style: const TextStyle(fontSize: 11.5, color: AppTheme.muted, fontWeight: FontWeight.w600)
+                            ),
+                          ]
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
