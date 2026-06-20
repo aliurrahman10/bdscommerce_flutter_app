@@ -67,10 +67,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         salePrice: _salePriceController.text,
       );
       _loaded = false;
-      setState(() {
-        _future = _load();
-      });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated successfully.')));
+      setState(() => _future = _load());
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated.')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -81,27 +79,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Details'),
-        actions: [
-          IconButton(
-            tooltip: 'Variations',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductVariationsPage(productId: widget.productId))),
-            icon: const Icon(Icons.tune),
-          ),
-          IconButton(
-            tooltip: 'Edit product',
-            onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductFormPage(productId: widget.productId)));
-              _loaded = false;
-              setState(() {
-                _future = _load();
-              });
-            },
-            icon: const Icon(Icons.edit_outlined),
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(title: const Text('Product Details', style: TextStyle(fontWeight: FontWeight.w800)), backgroundColor: Colors.white, scrolledUnderElevation: 0),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _future,
         builder: (context, snapshot) {
@@ -109,97 +88,135 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
           final product = snapshot.data?['product'] as Map<String, dynamic>? ?? {};
           _fill(product);
-          final image = product['thumbnail_url']?.toString();
-          final cats = (product['categories'] as List<dynamic>? ?? []).map((e) => (e as Map)['name']).join(', ');
-          final variations = product['variations'] as List<dynamic>? ?? [];
-
+          
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  height: 190,
-                  color: const Color(0xFFEAF0F2),
-                  child: image == null || image.isEmpty
-                      ? const Center(child: Icon(Icons.inventory_2_outlined, size: 54, color: AppTheme.primary))
-                      : Image.network(image, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.inventory_2_outlined))),
+              _ProductHero(product: product),
+              const SizedBox(height: 16),
+              
+              _ToolCard(
+                icon: Icons.edit_note_rounded,
+                title: 'Quick Update',
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: _Input('Regular Price', _regularPriceController)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _Input('Sale Price', _salePriceController)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _Input('Stock Quantity', _stockController),
+                    const SizedBox(height: 12),
+                    SwitchListTile.adaptive(title: const Text('Product Active'), value: _active, onChanged: (v) => setState(() => _active = v), contentPadding: EdgeInsets.zero),
+                    SwitchListTile.adaptive(title: const Text('In Stock'), value: _inStock, onChanged: (v) => setState(() => _inStock = v), contentPadding: EdgeInsets.zero),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                        onPressed: _saving ? null : _save,
+                        child: Text(_saving ? 'Saving...' : 'Save Changes'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
-              if ((product['gallery_urls'] as List<dynamic>? ?? []).isNotEmpty) SizedBox(
-                height: 82,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: (product['gallery_urls'] as List<dynamic>? ?? []).map((url) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(url.toString(), width: 82, height: 82, fit: BoxFit.cover)),
-                  )).toList(),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(children: [
-                Expanded(child: Text(product['name']?.toString() ?? 'Product', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900))),
-                if (product['product_type']?.toString() == 'variable') const Chip(label: Text('Variable')),
-              ]),
-              const SizedBox(height: 6),
-              Text(cats.isEmpty ? 'No category selected' : cats, style: const TextStyle(color: AppTheme.muted)),
-              const SizedBox(height: 18),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Quick Update', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(child: TextField(controller: _regularPriceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Regular price'))),
-                          const SizedBox(width: 10),
-                          Expanded(child: TextField(controller: _salePriceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sale price'))),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(controller: _stockController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock quantity')),
-                      const SizedBox(height: 10),
-                      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Product active'), value: _active, onChanged: (v) => setState(() => _active = v)),
-                      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('In stock'), value: _inStock, onChanged: (v) => setState(() => _inStock = v)),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _saving ? null : _save,
-                          icon: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save),
-                          label: Text(_saving ? 'Saving...' : 'Save changes'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if ((product['short_description']?.toString() ?? '').isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(product['short_description'].toString()))),
-              ],
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductVariationsPage(productId: widget.productId))),
-                icon: const Icon(Icons.tune),
-                label: const Text('Manage variations'),
-              ),
-              if (variations.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text('Variations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                ...variations.map((raw) {
-                  final v = raw as Map<String, dynamic>;
-                  return Card(child: ListTile(title: Text(v['variation_name']?.toString() ?? v['sku']?.toString() ?? 'Variation'), subtitle: Text('Stock: ${v['stock_qty'] ?? 0}'), trailing: Text(v['price']?.toString() ?? '')));
-                }),
-              ],
+              _ActionsCard(productId: widget.productId, onRefresh: () => setState(() => _future = _load())),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ProductHero extends StatelessWidget {
+  const _ProductHero({required this.product});
+  final Map<String, dynamic> product;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = product['thumbnail_url']?.toString();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: Row(
+        children: [
+          ClipRRect(borderRadius: BorderRadius.circular(12), child: Container(width: 80, height: 80, color: const Color(0xFFF1F5F9), child: image != null ? Image.network(image, fit: BoxFit.cover) : const Icon(Icons.inventory_2))),
+          const SizedBox(width: 16),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(product['name']?.toString() ?? 'Product', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            const SizedBox(height: 4),
+            Text(product['product_type']?.toString().toUpperCase() ?? 'SIMPLE', style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.bold, fontSize: 11)),
+          ])),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+  const _ToolCard({required this.title, required this.icon, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Icon(icon, size: 20, color: AppTheme.primary), const SizedBox(width: 8), Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))]),
+        const SizedBox(height: 16),
+        child,
+      ]),
+    );
+  }
+}
+
+class _Input extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  const _Input(this.label, this.controller);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+    );
+  }
+}
+
+class _ActionsCard extends StatelessWidget {
+  final int productId;
+  final VoidCallback onRefresh;
+  const _ActionsCard({required this.productId, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Edit Full Details'),
+            onTap: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductFormPage(productId: productId)));
+              onRefresh();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.tune),
+            title: const Text('Manage Variations'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductVariationsPage(productId: productId))),
+          ),
+        ],
       ),
     );
   }

@@ -40,52 +40,49 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   void _refresh() {
-    final next = _load();
-    setState(() {
-      _future = next;
-    });
+    setState(() => _future = _load());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Products', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProductFormPage()));
           _refresh();
         },
         icon: const Icon(Icons.add),
-        label: const Text('Add'),
+        label: const Text('Add Product'),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _searchController,
                     textInputAction: TextInputAction.search,
-                    decoration: const InputDecoration(hintText: 'Search product or SKU', prefixIcon: Icon(Icons.search)),
+                    decoration: InputDecoration(
+                      filled: true, fillColor: AppTheme.primary.withOpacity(0.04),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      prefixIcon: const Icon(Icons.search, color: AppTheme.muted),
+                      hintText: 'Search product...',
+                    ),
                     onSubmitted: (_) => _refresh(),
                   ),
                 ),
-                const SizedBox(width: 10),
-                DropdownButton<String>(
-                  value: _status,
-                  items: const [
-                    DropdownMenuItem<String>(value: 'all', child: Text('All')),
-                    DropdownMenuItem<String>(value: '1', child: Text('Active')),
-                    DropdownMenuItem<String>(value: '0', child: Text('Inactive')),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _status = value);
-                    _refresh();
-                  },
-                ),
+                const SizedBox(width: 8),
+                _StatusFilter(value: _status, onChanged: (v) { setState(() => _status = v); _refresh(); }),
               ],
             ),
           ),
@@ -100,7 +97,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 return RefreshIndicator(
                   onRefresh: () async => _refresh(),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                     itemCount: items.length,
                     itemBuilder: (_, index) {
                       final product = items[index] as Map<String, dynamic>;
@@ -134,11 +131,7 @@ class _ProductCardState extends State<_ProductCard> {
     try {
       final workspace = context.read<WorkspaceController>();
       final active = widget.product['status'] == true;
-      await workspace.storeApi.quickUpdateProduct(
-        token: workspace.activeStoreToken!,
-        productId: int.parse(widget.product['id'].toString()),
-        status: !active,
-      );
+      await workspace.storeApi.quickUpdateProduct(token: workspace.activeStoreToken!, productId: int.parse(widget.product['id'].toString()), status: !active);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product status updated.')));
       widget.onUpdated();
     } catch (e) {
@@ -148,93 +141,60 @@ class _ProductCardState extends State<_ProductCard> {
     }
   }
 
-  Future<void> _moveToTrash() async {
-    final id = int.tryParse(widget.product['id']?.toString() ?? '');
-    if (id == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Move product to trash?'),
-        content: const Text('This product will be hidden from website and normal product list. You can restore it from Trash Center.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Move to trash')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    setState(() => _updating = true);
-    try {
-      final workspace = context.read<WorkspaceController>();
-      final res = await workspace.storeApi.trashProduct(workspace.activeStoreToken!, id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']?.toString() ?? 'Product moved to trash.')));
-      widget.onUpdated();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _updating = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
-    final active = product['status'] == true;
-    final inStock = product['in_stock'] == true;
-    final image = product['thumbnail_url']?.toString();
-    final categories = (product['categories'] as List<dynamic>? ?? []).map((e) => (e as Map)['name']).join(', ');
+    final p = widget.product;
+    final active = p['status'] == true;
+    final inStock = p['in_stock'] == true;
+    final image = p['thumbnail_url']?.toString();
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () async {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductDetailPage(productId: int.parse(product['id'].toString()))));
-          widget.onUpdated();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: 66,
-                  height: 66,
-                  color: const Color(0xFFEAF0F2),
-                  child: image == null || image.isEmpty
-                      ? const Icon(Icons.inventory_2_outlined, color: AppTheme.primary)
-                      : Image.network(image, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2_outlined)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductDetailPage(productId: int.parse(p['id'].toString()))));
+            widget.onUpdated();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 60, height: 60, color: const Color(0xFFF1F5F9),
+                    child: image == null || image.isEmpty ? const Icon(Icons.inventory_2_outlined, color: AppTheme.muted) : Image.network(image, fit: BoxFit.cover),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(product['name']?.toString() ?? 'Product', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 4),
-                  Text(categories.isEmpty ? 'No category' : categories, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 6, children: [
-                    _Chip(text: '৳ ${product['display_price'] ?? product['regular_price'] ?? '0'}'),
-                    _Chip(text: 'Stock: ${product['stock_qty'] ?? 0}', color: inStock ? const Color(0xFFE8F6EE) : const Color(0xFFFFECEC)),
-                    _Chip(text: active ? 'Active' : 'Inactive', color: active ? const Color(0xFFE8F6EE) : const Color(0xFFFFF3D9)),
-                  ]),
-                ]),
-              ),
-              Column(mainAxisSize: MainAxisSize.min, children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p['name']?.toString() ?? 'Product', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      const SizedBox(height: 6),
+                      Wrap(spacing: 6, runSpacing: 6, children: [
+                        _Chip(text: '৳ ${p['display_price'] ?? p['regular_price'] ?? '0'}', bgColor: AppTheme.primary.withOpacity(0.08), textColor: AppTheme.primary),
+                        _Chip(text: inStock ? 'In Stock' : 'Out of Stock', bgColor: inStock ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2), textColor: inStock ? const Color(0xFF166534) : const Color(0xFF991B1B)),
+                      ]),
+                    ],
+                  ),
+                ),
                 IconButton(
-                  tooltip: active ? 'Make inactive' : 'Make active',
                   onPressed: _updating ? null : _toggleStatus,
-                  icon: Icon(active ? Icons.toggle_on : Icons.toggle_off, color: active ? AppTheme.primary : Colors.grey, size: 34),
+                  icon: Icon(active ? Icons.toggle_on : Icons.toggle_off, color: active ? AppTheme.primary : AppTheme.muted, size: 32),
                 ),
-                PopupMenuButton<String>(
-                  enabled: !_updating,
-                  onSelected: (value) {
-                    if (value == 'trash') _moveToTrash();
-                  },
-                  itemBuilder: (_) => const [PopupMenuItem(value: 'trash', child: Text('Move to Trash'))],
-                ),
-              ]),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -242,17 +202,43 @@ class _ProductCardState extends State<_ProductCard> {
   }
 }
 
+class _StatusFilter extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _StatusFilter({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All')),
+            DropdownMenuItem(value: '1', child: Text('Active')),
+            DropdownMenuItem(value: '0', child: Text('Inactive')),
+          ],
+          onChanged: (v) => v != null ? onChanged(v) : null,
+        ),
+      ),
+    );
+  }
+}
+
 class _Chip extends StatelessWidget {
-  const _Chip({required this.text, this.color});
+  const _Chip({required this.text, this.bgColor, this.textColor});
   final String text;
-  final Color? color;
+  final Color? bgColor;
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color ?? const Color(0xFFF2F5F6), borderRadius: BorderRadius.circular(99)),
-      child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+      decoration: BoxDecoration(color: bgColor ?? const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: textColor ?? AppTheme.text)),
     );
   }
 }
