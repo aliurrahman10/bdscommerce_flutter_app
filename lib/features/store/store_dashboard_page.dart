@@ -8,7 +8,6 @@ import '../../core/state/app_theme_controller.dart';
 import '../../core/state/workspace_controller.dart';
 import '../../shared/widgets/premium_widgets.dart';
 import '../../shared/widgets/renewal_warning_banner.dart';
-import '../account/my_account_page.dart';
 import '../guide/desktop_feature_guide_page.dart';
 import '../portal/portal_renew_page.dart';
 import 'access_management_page.dart';
@@ -18,7 +17,6 @@ import 'categories_page.dart';
 import 'content_management_page.dart';
 import 'customers_page.dart';
 import 'inventory_management_page.dart';
-import 'mobile_quality_page.dart';
 import 'notification_center_page.dart';
 import 'operations_page.dart';
 import 'orders_page.dart';
@@ -68,28 +66,37 @@ class _StoreDashboardPageState extends State<StoreDashboardPage> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  String _getGreeting(dynamic lang) {
+    final hour = DateTime.now().hour;
+    final isBn = lang.toString().contains('bn');
+    if (hour < 12) return isBn ? 'শুভ সকাল' : 'Good Morning';
+    if (hour < 17) return isBn ? 'শুভ অপরাহ্ন' : 'Good Afternoon';
+    return isBn ? 'শুভ সন্ধ্যা' : 'Good Evening';
+  }
+
   @override
   Widget build(BuildContext context) {
     final workspace = context.watch<WorkspaceController>();
     final theme = context.watch<AppThemeController>();
     final lang = theme.language;
     final t = theme.t;
+
     return FutureBuilder<_StoreDashboardPayload>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
         if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+        
         final payload = snapshot.data!;
         final dashboard = payload.dashboard;
         final copy = payload.meta.copy;
         final summary = dashboard['summary'] as Map<String, dynamic>? ?? {};
         final features = checkedFeaturesFromAudit(dashboard['feature_audit'] as Map<String, dynamic>?);
         bool isLocked(String key) => features.containsKey(key) && features[key] != true;
+        
         final renewalPayload = <String, dynamic>{
           'dashboard': dashboard,
           'tenant': workspace.activeTenant ?? const <String, dynamic>{},
-          // Phase 12H.5: store renewal date arrives from ecommerce support/meta in Store mode.
-          // AppMeta now uses the active mode first, so this payload contains ecommerce tenant expires_at.
           'support': payload.meta.support,
           'renewal': payload.meta.support['renewal'] ?? const <String, dynamic>{},
           'store_tenant': payload.meta.support['tenant'] ?? const <String, dynamic>{},
@@ -112,19 +119,40 @@ class _StoreDashboardPageState extends State<StoreDashboardPage> {
                   }
                 },
               ),
-              PremiumHeroCard(
-                title: copy.localized(lang, 'store_dashboard_title', en: workspace.activeStoreSlug ?? 'Store Admin', bn: workspace.activeStoreSlug ?? 'Store Admin'),
-                subtitle: copy.localized(lang, 'store_dashboard_subtitle', en: 'Premium mobile control room for orders, products, stock, payments and daily store operations.', bn: 'অর্ডার, প্রোডাক্ট, স্টক, পেমেন্ট ও দৈনিক Store অপারেশনের জন্য প্রিমিয়াম Mobile control room।'),
-                icon: Icons.storefront_rounded,
-                badge: copy.localized(lang, 'store_dashboard_badge', en: 'Store Admin', bn: 'Store Admin'),
-                action: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white.withOpacity(0.30))),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
-                  icon: const Icon(Icons.desktop_windows_rounded),
-                  label: Text(copy.localized(lang, 'store_dashboard_guide_button', en: 'Desktop Feature Guide', bn: 'Desktop Feature Guide')),
+              
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, top: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_getGreeting(lang)},',
+                            style: const TextStyle(fontSize: 14, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            workspace.activeStoreSlug ?? 'Store Admin',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 22, color: AppTheme.text, fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      style: IconButton.styleFrom(backgroundColor: AppTheme.border.withOpacity(0.5)),
+                      icon: const Icon(Icons.desktop_windows_rounded, color: AppTheme.primary, size: 20),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
+                      tooltip: copy.localized(lang, 'store_dashboard_guide_button', en: 'Desktop Guide', bn: 'Desktop Guide'),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+
               Builder(builder: (context) {
                 final totalOrders = _asInt(summary['total_orders']);
                 final todayOrders = _asInt(summary['today_orders']);
@@ -162,26 +190,37 @@ class _StoreDashboardPageState extends State<StoreDashboardPage> {
                   ],
                 );
               }),
-              const SizedBox(height: 18),
+              
+              const SizedBox(height: 24),
               PremiumSectionTitle(
-                title: copy.localized(lang, 'store_actions_title', en: 'Quick actions', bn: 'দ্রুত অ্যাকশন'),
-                subtitle: copy.localized(lang, 'store_actions_subtitle', en: 'Color-coded shortcuts by operation type for faster decisions.', bn: 'দ্রুত সিদ্ধান্তের জন্য অপারেশন অনুযায়ী compact shortcut।'),
+                title: copy.localized(lang, 'store_actions_title', en: 'Quick Actions', bn: 'দ্রুত অ্যাকশন'),
+                subtitle: copy.localized(lang, 'store_actions_subtitle', en: 'Manage your entire store from here.', bn: 'এখান থেকে আপনার স্টোর ম্যানেজ করুন।'),
               ),
-              _ActionTile(icon: Icons.notifications_active_rounded, title: t('Notification Center', 'নোটিফিকেশন সেন্টার'), subtitle: t('Pending orders, push logs and activity logs', 'পেন্ডিং অর্ডার, Push log ও Activity log'), page: const NotificationCenterPage(), gradient: AppTheme.dangerGradient),
-              _ActionTile(icon: Icons.shopping_bag_rounded, title: t('Orders', 'অর্ডার'), subtitle: t('View orders and update status', 'অর্ডার দেখুন ও Status update করুন'), page: const OrdersPage(), locked: isLocked('orders'), requiredPackage: 'Launch', gradient: AppTheme.premiumGradient),
-              _ActionTile(icon: Icons.inventory_2_rounded, title: t('Products', 'প্রোডাক্ট'), subtitle: t('Products, images, variations and stock updates', 'প্রোডাক্ট, ছবি, Variation ও Stock update'), page: const ProductsPage(), locked: isLocked('products'), requiredPackage: 'Launch', gradient: AppTheme.infoGradient),
-              _ActionTile(icon: Icons.tune_rounded, title: t('Operations', 'অপারেশন'), subtitle: t('Coupons, delivery, payments and couriers', 'Coupon, Delivery, Payment ও Courier'), page: const OperationsPage(), gradient: AppTheme.warningGradient),
-              _ActionTile(icon: Icons.inventory_2_outlined, title: t('Inventory & Returns', 'Inventory & Return'), subtitle: t('Stock adjustment, warehouses and returns', 'Stock adjustment, Warehouse ও Return'), page: const InventoryManagementPage(), locked: isLocked('inventory'), requiredPackage: 'Scale', gradient: AppTheme.successGradient),
-              _ActionTile(icon: Icons.insights_rounded, title: t('Reports', 'রিপোর্ট'), subtitle: t('Sales, low stock and latest orders', 'Sales, Low stock ও Latest order'), page: const ReportsPage(), locked: isLocked('advanced_reports'), requiredPackage: 'Scale', gradient: AppTheme.premiumGradient),
-              _ActionTile(icon: Icons.palette_rounded, title: t('Appearance', 'Appearance'), subtitle: t('Basic theme settings and sliders', 'Basic theme setting ও Slider'), page: const AppearanceManagementPage(), locked: isLocked('theme_customization'), requiredPackage: 'Launch', gradient: AppTheme.dangerGradient),
-              _ActionTile(icon: Icons.web_rounded, title: t('Content & SEO', 'Content & SEO'), subtitle: t('Pages, blog, menus and SEO fields', 'Page, blog, menu ও SEO field'), page: const ContentManagementPage(), locked: isLocked('page_builder') || isLocked('menu_builder'), requiredPackage: 'Scale', gradient: AppTheme.infoGradient),
-              _ActionTile(icon: Icons.admin_panel_settings_rounded, title: t('Access Management', 'Access Management'), subtitle: t('Staff accounts and role visibility', 'Staff account ও Role visibility'), page: const AccessManagementPage(), locked: isLocked('staff_accounts'), requiredPackage: 'Scale', gradient: AppTheme.warningGradient),
-              _ActionTile(icon: Icons.business_center_rounded, title: t('Business Operations', 'Business Operations'), subtitle: t('Suppliers, purchases and expenses', 'Supplier, Purchase ও Expense'), page: const BusinessManagementPage(), locked: isLocked('inventory') || isLocked('purchase_orders') || isLocked('expenses'), requiredPackage: 'Scale', gradient: AppTheme.successGradient),
-              _ActionTile(icon: Icons.category_rounded, title: t('Categories', 'ক্যাটাগরি'), subtitle: t('Category image, status and home visibility', 'Category, Image ও Home visibility'), page: const CategoriesPage(), locked: isLocked('categories'), requiredPackage: 'Launch', gradient: AppTheme.infoGradient),
-              _ActionTile(icon: Icons.people_alt_rounded, title: t('Customers', 'কাস্টমার'), subtitle: t('Customer details and order history', 'Customer details ও Order history'), page: const CustomersPage(), gradient: AppTheme.premiumGradient),
-              _ActionTile(icon: Icons.verified_user_rounded, title: 'Push & Plan Audit', subtitle: t('Firebase, device token and plan sync check', 'Firebase, device token ও plan sync check'), page: const MobileQualityPage(), gradient: AppTheme.successGradient),
-              _ActionTile(icon: Icons.delete_rounded, title: 'Trash Center', subtitle: t('Restore or delete orders and products', 'Order ও product restore/delete করুন'), page: const TrashCenterPage(), gradient: AppTheme.dangerGradient),
-              _ActionTile(icon: Icons.person_rounded, title: t('My Account', 'My Account'), subtitle: t('Profile, password and active sessions', 'Profile, Password ও Active session'), page: const MyAccountPage(), gradient: AppTheme.infoGradient),
+              const SizedBox(height: 12),
+
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 4, // 4-Column Grid
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 0.82,
+                children: [
+                  _GridActionTile(icon: Icons.shopping_bag_rounded, title: t('Orders', 'অর্ডার'), page: const OrdersPage(), locked: isLocked('orders'), gradient: AppTheme.premiumGradient),
+                  _GridActionTile(icon: Icons.inventory_2_rounded, title: t('Products', 'প্রোডাক্ট'), page: const ProductsPage(), locked: isLocked('products'), gradient: AppTheme.infoGradient),
+                  _GridActionTile(icon: Icons.category_rounded, title: t('Categories', 'ক্যাটাগরি'), page: const CategoriesPage(), locked: isLocked('categories'), gradient: AppTheme.infoGradient),
+                  _GridActionTile(icon: Icons.tune_rounded, title: t('Operations', 'অপারেশন'), page: const OperationsPage(), gradient: AppTheme.warningGradient),
+                  _GridActionTile(icon: Icons.insights_rounded, title: t('Reports', 'রিপোর্ট'), page: const ReportsPage(), locked: isLocked('advanced_reports'), gradient: AppTheme.premiumGradient),
+                  _GridActionTile(icon: Icons.people_alt_rounded, title: t('Customers', 'কাস্টমার'), page: const CustomersPage(), gradient: AppTheme.premiumGradient),
+                  _GridActionTile(icon: Icons.inventory_2_outlined, title: t('Inventory', 'Inventory'), page: const InventoryManagementPage(), locked: isLocked('inventory'), gradient: AppTheme.successGradient),
+                  _GridActionTile(icon: Icons.business_center_rounded, title: t('Business', 'Business'), page: const BusinessManagementPage(), locked: isLocked('expenses'), gradient: AppTheme.successGradient),
+                  _GridActionTile(icon: Icons.admin_panel_settings_rounded, title: t('Access', 'Access'), page: const AccessManagementPage(), locked: isLocked('staff_accounts'), gradient: AppTheme.warningGradient),
+                  _GridActionTile(icon: Icons.palette_rounded, title: t('Appearance', 'Theme'), page: const AppearanceManagementPage(), locked: isLocked('theme_customization'), gradient: AppTheme.dangerGradient),
+                  _GridActionTile(icon: Icons.web_rounded, title: t('Content', 'Content'), page: const ContentManagementPage(), locked: isLocked('page_builder'), gradient: AppTheme.infoGradient),
+                  _GridActionTile(icon: Icons.delete_rounded, title: t('Trash', 'Trash'), page: const TrashCenterPage(), gradient: AppTheme.dangerGradient),
+                ],
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -189,7 +228,6 @@ class _StoreDashboardPageState extends State<StoreDashboardPage> {
     );
   }
 }
-
 
 class _DashboardMetricCard extends StatelessWidget {
   const _DashboardMetricCard({required this.title, required this.value, required this.icon, required this.gradient, required this.caption, required this.onTap});
@@ -350,34 +388,80 @@ class _StoreDashboardPayload {
   final AppMeta meta;
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
+class _GridActionTile extends StatelessWidget {
+  const _GridActionTile({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.page,
     required this.gradient,
     this.locked = false,
-    this.requiredPackage = 'a higher plan',
   });
+
   final IconData icon;
   final String title;
-  final String subtitle;
   final Widget page;
   final Gradient gradient;
   final bool locked;
-  final String requiredPackage;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumActionTile(
-      icon: icon,
-      title: title,
-      subtitle: subtitle,
-      gradient: gradient,
-      locked: locked,
-      requiredPackage: requiredPackage,
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          if (!locked) Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+        },
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: AppTheme.softShadow,
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8), // Icon padding reduced for 4-columns
+                      decoration: BoxDecoration(
+                        gradient: locked ? null : gradient,
+                        color: locked ? AppTheme.border : null,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: locked ? AppTheme.muted : Colors.white, size: 22),
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: locked ? AppTheme.muted : AppTheme.text,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5, // Text size reduced for 4-columns
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (locked)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.lock_rounded, size: 12, color: AppTheme.muted2),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

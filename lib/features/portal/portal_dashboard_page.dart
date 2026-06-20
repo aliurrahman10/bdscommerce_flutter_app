@@ -49,6 +49,14 @@ class _PortalDashboardPageState extends State<PortalDashboardPage> {
     await next;
   }
 
+  String _getGreeting(dynamic lang) {
+    final hour = DateTime.now().hour;
+    final isBn = lang.toString().contains('bn');
+    if (hour < 12) return isBn ? 'শুভ সকাল' : 'Good Morning';
+    if (hour < 17) return isBn ? 'শুভ অপরাহ্ন' : 'Good Afternoon';
+    return isBn ? 'শুভ সন্ধ্যা' : 'Good Evening';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<AppThemeController>();
@@ -59,10 +67,12 @@ class _PortalDashboardPageState extends State<PortalDashboardPage> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
         if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+        
         final payload = snapshot.data!;
         final data = payload.dashboard;
         final copy = payload.meta.copy;
         final summary = data['summary'] as Map<String, dynamic>? ?? {};
+        
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -73,34 +83,69 @@ class _PortalDashboardPageState extends State<PortalDashboardPage> {
                 copy: copy,
                 onRenewNow: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PortalRenewPage())),
               ),
-              PremiumHeroCard(
-                title: copy.localized(lang, 'portal_dashboard_title', en: 'Client Portal', bn: 'Client Portal'),
-                subtitle: copy.localized(lang, 'portal_dashboard_subtitle', en: 'Premium control center for services, billing, renewals, notifications and support.', bn: 'সার্ভিস, Billing, Renewal, Notification ও Support দ্রুত manage করার premium control center।'),
-                icon: Icons.workspace_premium_rounded,
-                badge: copy.localized(lang, 'portal_dashboard_badge', en: 'Client Portal', bn: 'Client Portal'),
-                action: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white.withOpacity(0.30))),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
-                  icon: const Icon(Icons.desktop_windows_rounded),
-                  label: Text(copy.localized(lang, 'portal_dashboard_guide_button', en: 'App vs Desktop Guide', bn: 'App vs Desktop Guide')),
+              
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, top: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_getGreeting(lang)},',
+                            style: const TextStyle(fontSize: 14, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            copy.localized(lang, 'portal_dashboard_title', en: 'Client Portal', bn: 'Client Portal'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 22, color: AppTheme.text, fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      style: IconButton.styleFrom(backgroundColor: AppTheme.border.withOpacity(0.5)),
+                      icon: const Icon(Icons.desktop_windows_rounded, color: AppTheme.primary, size: 20),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DesktopFeatureGuidePage())),
+                      tooltip: copy.localized(lang, 'portal_dashboard_guide_button', en: 'Desktop Guide', bn: 'Desktop Guide'),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 8),
               _MetricGrid(summary: summary),
-              const SizedBox(height: 18),
+              const SizedBox(height: 24),
+              
               PremiumSectionTitle(
-                title: copy.localized(lang, 'portal_actions_title', en: 'Client actions', bn: 'ক্লায়েন্ট অ্যাকশন'),
-                subtitle: copy.localized(lang, 'portal_actions_subtitle', en: 'Quick, colorful shortcuts for the daily portal workflow.', bn: 'Daily Portal workflow-এর জন্য compact shortcut।'),
+                title: copy.localized(lang, 'portal_actions_title', en: 'Quick Actions', bn: 'দ্রুত অ্যাকশন'),
+                subtitle: copy.localized(lang, 'portal_actions_subtitle', en: 'Shortcuts for the daily portal workflow.', bn: 'Daily Portal workflow-এর জন্য shortcut।'),
               ),
-              _NavCard(title: t('Billing Center', 'Billing Center'), subtitle: t('Invoices, payments and package requests', 'Invoice, Payment ও Package request'), icon: Icons.receipt_long_rounded, page: const PortalBillingCenterPage(), gradient: AppTheme.premiumGradient),
-              _NavCard(title: t('Renewal Center', 'Renewal Center'), subtitle: t('Renewal dates, reminders and renewal support', 'Renewal date, Reminder ও Support'), icon: Icons.event_repeat_rounded, page: const PortalRenewalCenterPage(), gradient: AppTheme.warningGradient),
-              _NavCard(title: t('Services', 'সার্ভিস'), subtitle: t('Active services and details', 'Active service ও Details'), icon: Icons.storefront_rounded, page: const PortalServicesPage(), gradient: AppTheme.infoGradient),
-              _NavCard(title: t('Local Billing', 'Local Billing'), subtitle: t('Local invoices and payment status', 'Local invoice ও Payment status'), icon: Icons.payments_rounded, page: const PortalLocalBillingPage(), gradient: AppTheme.successGradient),
-              _NavCard(title: t('Notifications', 'Notifications'), subtitle: t('Alerts, reminders and updates', 'Alert, Reminder ও Update'), icon: Icons.notifications_active_rounded, page: const PortalNotificationsPage(), gradient: AppTheme.dangerGradient),
-              _NavCard(title: t('Support', 'Support'), subtitle: t('Create tickets and track replies', 'Ticket create ও Reply track করুন'), icon: Icons.support_agent_rounded, page: const PortalSupportPage(), gradient: AppTheme.premiumGradient),
-              _NavCard(title: t('Onboarding', 'Onboarding'), subtitle: t('Submit setup information and files', 'Setup info ও File submit করুন'), icon: Icons.task_alt_rounded, page: const PortalOnboardingPage(), gradient: AppTheme.successGradient),
-              _NavCard(title: t('My Account', 'My Account'), subtitle: t('Profile, password and sessions', 'Profile, Password ও Session'), icon: Icons.person_rounded, page: const MyAccountPage(), gradient: AppTheme.infoGradient),
-              _NavCard(title: t('Desktop Guide', 'Desktop Guide'), subtitle: t('Mobile features and desktop recommended features', 'Mobile feature এবং Desktop recommended feature'), icon: Icons.desktop_windows_rounded, page: const DesktopFeatureGuidePage(), gradient: AppTheme.warningGradient),
+              const SizedBox(height: 12),
+
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 4, 
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 0.82,
+                children: [
+                  _GridActionTile(icon: Icons.receipt_long_rounded, title: t('Billing', 'Billing'), page: const PortalBillingCenterPage(), gradient: AppTheme.premiumGradient),
+                  _GridActionTile(icon: Icons.event_repeat_rounded, title: t('Renewal', 'Renewal'), page: const PortalRenewalCenterPage(), gradient: AppTheme.warningGradient),
+                  _GridActionTile(icon: Icons.storefront_rounded, title: t('Services', 'সার্ভিস'), page: const PortalServicesPage(), gradient: AppTheme.infoGradient),
+                  _GridActionTile(icon: Icons.payments_rounded, title: t('Local Bill', 'Local Bill'), page: const PortalLocalBillingPage(), gradient: AppTheme.successGradient),
+                  _GridActionTile(icon: Icons.notifications_active_rounded, title: t('Alerts', 'Alerts'), page: const PortalNotificationsPage(), gradient: AppTheme.dangerGradient),
+                  _GridActionTile(icon: Icons.support_agent_rounded, title: t('Support', 'Support'), page: const PortalSupportPage(), gradient: AppTheme.premiumGradient),
+                  _GridActionTile(icon: Icons.task_alt_rounded, title: t('Onboarding', 'Onboard'), page: const PortalOnboardingPage(), gradient: AppTheme.successGradient),
+                  _GridActionTile(icon: Icons.person_rounded, title: t('Account', 'Account'), page: const MyAccountPage(), gradient: AppTheme.infoGradient),
+                ],
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -139,22 +184,65 @@ class _MetricGrid extends StatelessWidget {
   }
 }
 
-class _NavCard extends StatelessWidget {
-  const _NavCard({required this.title, required this.subtitle, required this.icon, required this.page, required this.gradient});
-  final String title;
-  final String subtitle;
+class _GridActionTile extends StatelessWidget {
+  const _GridActionTile({
+    required this.icon,
+    required this.title,
+    required this.page,
+    required this.gradient,
+  }); // <-- completely removed "locked" logic
+
   final IconData icon;
+  final String title;
   final Widget page;
   final Gradient gradient;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumActionTile(
-      icon: icon,
-      title: title,
-      subtitle: subtitle,
-      gradient: gradient,
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: AppTheme.softShadow,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: gradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.text,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
