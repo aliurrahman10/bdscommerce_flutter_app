@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +10,6 @@ import 'order_detail_page.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key, this.initialStatus = 'all', this.initialPaymentStatus = 'all'});
-
   final String initialStatus;
   final String initialPaymentStatus;
 
@@ -26,9 +24,11 @@ class _OrdersPageState extends State<OrdersPage> {
   late String _paymentStatus;
   Timer? _searchDebounce;
   late Future<Map<String, dynamic>> _future;
+
   List<_OrderStatusOption> _orderStatuses = const [];
   bool _loadingStatuses = true;
   bool _commandCenterExpanded = false;
+
   String? _whatsAppMessageTemplate;
   String _storeName = 'our store';
 
@@ -70,6 +70,7 @@ class _OrdersPageState extends State<OrdersPage> {
           .map(_OrderStatusOption.fromJson)
           .where((status) => status.id > 0 && status.name.trim().isNotEmpty)
           .toList();
+
       if (!mounted) return;
       setState(() {
         _orderStatuses = statuses;
@@ -85,6 +86,7 @@ class _OrdersPageState extends State<OrdersPage> {
         }
         _loadingStatuses = false;
       });
+
       if (_orderStatusId != null) _refresh();
     } catch (_) {
       if (!mounted) return;
@@ -103,9 +105,7 @@ class _OrdersPageState extends State<OrdersPage> {
         _whatsAppMessageTemplate = settings['whatsapp_order_message_template']?.toString();
         _storeName = storeName != null && storeName.isNotEmpty ? storeName : 'our store';
       });
-    } catch (_) {
-      // Keep the safe Bangla fallback if settings cannot be loaded.
-    }
+    } catch (_) {}
   }
 
   void _refresh() {
@@ -185,7 +185,7 @@ class _OrdersPageState extends State<OrdersPage> {
   String _whatsappMessage(Map<String, dynamic> order) {
     final template = (_whatsAppMessageTemplate ?? '').trim().isNotEmpty
         ? _whatsAppMessageTemplate!.trim()
-        : 'আসসালামু আলাইকুম, আপনার অর্ডার #{order_id} সম্পর্কে যোগাযোগ করছি। মোট: ৳ {total}। ধন্যবাদ।';
+        : 'Hello {customer_name}, your order #{order_id} is {status}. Total: {total}. - {store_name}';
     final values = <String, String>{
       'order_id': order['id']?.toString() ?? '',
       'customer_name': order['customer_name']?.toString() ?? order['name']?.toString() ?? '',
@@ -211,32 +211,50 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+      backgroundColor: const Color(0xFFF8FAFC), // Enterprise soft background
+      appBar: AppBar(
+        title: const Text('Orders', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            _OrdersHero(
-              statusText: _activeStatusLabel(),
-              paymentStatus: _paymentStatus,
-              searchText: _search.text,
-              expanded: _commandCenterExpanded,
-              onToggle: () => setState(() => _commandCenterExpanded = !_commandCenterExpanded),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-              child: TextField(
-                controller: _search,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: 'Live search order, phone, transaction',
-                  suffixIcon: _search.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close), onPressed: _clearSearch),
-                ),
-                onChanged: _onSearchChanged,
-                onSubmitted: (_) => _refresh(),
+            Container(
+              color: Colors.white,
+              child: Column(
+                children: [
+                  _OrdersHero(
+                    statusText: _activeStatusLabel(),
+                    paymentStatus: _paymentStatus,
+                    searchText: _search.text,
+                    expanded: _commandCenterExpanded,
+                    onToggle: () => setState(() => _commandCenterExpanded = !_commandCenterExpanded),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: TextField(
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppTheme.primary.withOpacity(0.04),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        prefixIcon: const Icon(Icons.search, color: AppTheme.muted),
+                        hintText: 'Search order, phone, or ID...',
+                        hintStyle: const TextStyle(color: AppTheme.muted),
+                        suffixIcon: _search.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close, size: 20), onPressed: _clearSearch),
+                      ),
+                      onChanged: _onSearchChanged,
+                      onSubmitted: (_) => _refresh(),
+                    ),
+                  ),
+                  _buildFilters(),
+                  const Divider(height: 1, color: AppTheme.border),
+                ],
               ),
             ),
-            _buildFilters(),
             Expanded(
               child: FutureBuilder<Map<String, dynamic>>(
                 future: _future,
@@ -252,7 +270,9 @@ class _OrdersPageState extends State<OrdersPage> {
                   }
                   final items = (snapshot.data?['data'] as List<dynamic>? ?? []);
                   final meta = snapshot.data?['meta'] as Map<String, dynamic>? ?? const {};
+
                   if (items.isEmpty) return _EmptyOrders(onReset: _resetFilters);
+
                   return Column(
                     children: [
                       _ResultSummary(visible: items.length, total: int.tryParse(meta['total']?.toString() ?? '') ?? items.length, filter: _activeFilterSummary()),
@@ -260,7 +280,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         child: RefreshIndicator(
                           onRefresh: () async => _refresh(),
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 120),
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                             itemCount: items.length,
                             itemBuilder: (_, index) {
                               final order = items[index] as Map<String, dynamic>;
@@ -295,11 +315,11 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Widget _buildFilters() {
     final statusChips = <Widget>[
-      _FilterChip(label: 'All orders', selected: _orderStatusId == null && _status == 'all', onTap: () => _setStatus('all')),
+      _FilterChip(label: 'All', selected: _orderStatusId == null && _status == 'all', onTap: () => _setStatus('all')),
       if (_loadingStatuses)
         const Padding(
-          padding: EdgeInsets.only(right: 10),
-          child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+          padding: EdgeInsets.only(right: 10, left: 10),
+          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
         ),
       if (!_loadingStatuses && _orderStatuses.isNotEmpty)
         for (final status in _orderStatuses)
@@ -315,15 +335,15 @@ class _OrdersPageState extends State<OrdersPage> {
         _FilterChip(label: 'Completed', selected: _status == 'completed', onTap: () => _setStatus('completed')),
         _FilterChip(label: 'Cancelled', selected: _status == 'cancelled', onTap: () => _setStatus('cancelled')),
       ],
-      const SizedBox(width: 10),
-      _FilterChip(label: 'Payment: All', selected: _paymentStatus == 'all', onTap: () => _setPayment('all')),
+      Container(width: 1, height: 20, color: AppTheme.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+      _FilterChip(label: 'All Payments', selected: _paymentStatus == 'all', onTap: () => _setPayment('all')),
       _FilterChip(label: 'Paid', selected: _paymentStatus == 'paid', onTap: () => _setPayment('paid'), color: AppTheme.success),
       _FilterChip(label: 'Unpaid', selected: _paymentStatus == 'unpaid', onTap: () => _setPayment('unpaid'), color: AppTheme.warning),
     ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
       child: Row(children: statusChips),
     );
   }
@@ -388,7 +408,6 @@ class _OrdersPageState extends State<OrdersPage> {
 
 class _OrderStatusOption {
   const _OrderStatusOption({required this.id, required this.name, this.color});
-
   final int id;
   final String name;
   final Color? color;
@@ -411,6 +430,7 @@ class _OrderStatusOption {
   }
 }
 
+// Enterprise Command Center (Flat, no heavy gradient)
 class _OrdersHero extends StatelessWidget {
   const _OrdersHero({required this.statusText, required this.paymentStatus, required this.searchText, required this.expanded, required this.onToggle});
   final String statusText;
@@ -422,60 +442,57 @@ class _OrdersHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final paymentLabel = paymentStatus == 'all' ? 'All payments' : paymentStatus;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+    
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: expanded ? AppTheme.glowShadow() : AppTheme.softShadow,
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           onTap: onToggle,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(12, expanded ? 13 : 10, 12, expanded ? 13 : 10),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(.14), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(.18))),
-                      child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 19),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                      child: const Icon(Icons.data_usage_rounded, color: AppTheme.primary, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Order Command Center', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900, height: 1.1)),
-                          const SizedBox(height: 3),
-                          Text('$statusText • $paymentLabel', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(.82), fontWeight: FontWeight.w700, fontSize: 11.5)),
+                          const Text('Overview', style: TextStyle(color: AppTheme.text, fontSize: 13.5, fontWeight: FontWeight.w800, letterSpacing: 0.3)),
+                          Text('$statusText • $paymentLabel', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w600, fontSize: 11)),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: Colors.white),
+                    Icon(expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: AppTheme.muted, size: 20),
                   ],
                 ),
                 if (expanded) ...[
-                  const SizedBox(height: 12),
-                  Text('Search, filter, call, WhatsApp and update orders from this mobile workspace.', style: TextStyle(color: Colors.white.withOpacity(.82), fontWeight: FontWeight.w600, height: 1.35, fontSize: 12.5)),
-                  const SizedBox(height: 10),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 8),
+                    child: Text('Filters applied currently:', style: TextStyle(color: AppTheme.muted2, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _HeroPill(icon: Icons.fact_check_rounded, text: statusText),
-                      _HeroPill(icon: Icons.payments_rounded, text: paymentLabel),
-                      if (searchText.trim().isNotEmpty) _HeroPill(icon: Icons.search_rounded, text: 'Live search'),
+                      _HeroPill(icon: Icons.fact_check_outlined, text: statusText),
+                      _HeroPill(icon: Icons.payments_outlined, text: paymentLabel),
+                      if (searchText.trim().isNotEmpty) _HeroPill(icon: Icons.search_rounded, text: 'Search active'),
                     ],
                   ),
                 ],
@@ -496,12 +513,12 @@ class _HeroPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(.13), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.16))),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(6), border: Border.all(color: AppTheme.border)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: Colors.white, size: 14),
-        const SizedBox(width: 5),
-        Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11.5)),
+        Icon(icon, color: AppTheme.muted, size: 12),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(color: AppTheme.text, fontWeight: FontWeight.w700, fontSize: 11)),
       ]),
     );
   }
@@ -516,21 +533,18 @@ class _ResultSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
       child: Row(
         children: [
-          Expanded(child: Text(filter, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700, fontSize: 12))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(.08), borderRadius: BorderRadius.circular(999)),
-            child: Text('$visible/$total', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 11)),
-          ),
+          Expanded(child: Text(filter, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w600, fontSize: 11.5))),
+          Text('$visible of $total', style: const TextStyle(color: AppTheme.text, fontWeight: FontWeight.w800, fontSize: 11.5)),
         ],
       ),
     );
   }
 }
 
+// Enterprise Style Order Card
 class _PremiumOrderCard extends StatelessWidget {
   const _PremiumOrderCard({
     required this.order,
@@ -558,96 +572,158 @@ class _PremiumOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final paymentStatus = order['payment_status']?.toString() ?? 'unpaid';
     final hasPhone = (order['mobile']?.toString() ?? '').trim().isNotEmpty;
+    
+    // Enterprise Soft Colors
+    final activeStatusColor = statusColor ?? AppTheme.primary;
+    final isPaid = paymentStatus.toLowerCase() == 'paid';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 11),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppTheme.border), boxShadow: AppTheme.softShadow),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(16), // Slightly less rounded for enterprise
+        border: Border.all(color: const Color(0xFFE2E8F0)), // Light solid border
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2))
+        ], // Ultra-soft shadow
+      ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(gradient: _statusGradient(statusText), borderRadius: BorderRadius.circular(17)),
-                  child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 21),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('#${order['id']} • ${order['customer_name'] ?? 'Customer'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5)),
-                    const SizedBox(height: 3),
-                    Text(order['created_at']?.toString() ?? 'Recent order', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontSize: 11.5, fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-                const SizedBox(width: 8),
-                Text('৳ ${order['total'] ?? '0'}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5)),
-              ]),
-              const SizedBox(height: 11),
-              Wrap(spacing: 7, runSpacing: 7, children: [
-                _Badge(text: statusText, color: (statusColor ?? AppTheme.primary).withOpacity(.11), textColor: statusColor ?? AppTheme.primary),
-                _Badge(text: paymentStatus, color: paymentStatus == 'paid' ? const Color(0xFFE8F6EE) : const Color(0xFFFFF3D9), textColor: paymentStatus == 'paid' ? AppTheme.success : const Color(0xFFA16207)),
-                _Badge(text: order['payment_method']?.toString() ?? 'payment'),
-              ]),
-              const SizedBox(height: 10),
-              _InlineInfo(icon: Icons.phone_outlined, text: order['mobile']?.toString() ?? 'No phone'),
-              _InlineInfo(icon: Icons.location_on_outlined, text: order['address']?.toString() ?? 'No address'),
-              const SizedBox(height: 11),
-              Row(children: [
-                Expanded(child: OutlinedButton.icon(onPressed: hasPhone ? onCall : null, icon: const Icon(Icons.call_rounded, size: 17), label: const Text('Call'))),
-                const SizedBox(width: 8),
-                Expanded(child: OutlinedButton.icon(onPressed: hasPhone ? onWhatsApp : null, icon: const Icon(Icons.chat_rounded, size: 17), label: const Text('WhatsApp'))),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(onPressed: onTap, icon: const Icon(Icons.open_in_new_rounded)),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'copy_phone') onCopyPhone();
-                    if (value == 'copy_address') onCopyAddress();
-                    if (value == 'trash') onTrash();
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'copy_phone', child: Text('Copy phone')),
-                    PopupMenuItem(value: 'copy_address', child: Text('Copy address')),
-                    PopupMenuItem(value: 'trash', child: Text('Move to Trash')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Section (ID & Total)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('#${order['id']}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: -0.3)),
+                          const SizedBox(height: 2),
+                          Text(order['created_at']?.toString() ?? 'Recent', style: const TextStyle(color: AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    Text('৳ ${order['total'] ?? '0'}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   ],
                 ),
-              ]),
-            ]),
+              ),
+
+              // Middle Section (Customer Info)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 14, color: AppTheme.muted),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(order['customer_name']?.toString() ?? 'Customer', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (hasPhone)
+                      Row(
+                        children: [
+                          const Icon(Icons.phone_outlined, size: 14, color: AppTheme.muted),
+                          const SizedBox(width: 6),
+                          Text(order['mobile']?.toString() ?? '', style: const TextStyle(color: AppTheme.muted, fontSize: 12)),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Badges Section (Pill style)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _SoftBadge(text: statusText, bgColor: activeStatusColor.withOpacity(0.1), textColor: activeStatusColor),
+                    _SoftBadge(
+                      text: paymentStatus.toUpperCase(), 
+                      bgColor: isPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF9C3), 
+                      textColor: isPaid ? const Color(0xFF166534) : const Color(0xFF854D0E)
+                    ),
+                    _SoftBadge(text: order['payment_method']?.toString() ?? 'payment', bgColor: AppTheme.primary.withOpacity(0.05), textColor: AppTheme.muted),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+              // Action Bar (Minimal)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(foregroundColor: AppTheme.muted, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16)))),
+                      onPressed: onTap,
+                      icon: const Icon(Icons.visibility_outlined, size: 16),
+                      label: const Text('Details', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  Container(width: 1, height: 24, color: const Color(0xFFF1F5F9)),
+                  if (hasPhone) ...[
+                    IconButton(
+                      onPressed: onCall,
+                      icon: const Icon(Icons.call_outlined, size: 18, color: AppTheme.primary),
+                      tooltip: 'Call Customer',
+                    ),
+                    IconButton(
+                      onPressed: onWhatsApp,
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18, color: Color(0xFF25D366)),
+                      tooltip: 'WhatsApp',
+                    ),
+                  ],
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.muted),
+                    onSelected: (value) {
+                      if (value == 'copy_phone') onCopyPhone();
+                      if (value == 'copy_address') onCopyAddress();
+                      if (value == 'trash') onTrash();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'copy_phone', child: Text('Copy Phone', style: TextStyle(fontSize: 13))),
+                      PopupMenuItem(value: 'copy_address', child: Text('Copy Address', style: TextStyle(fontSize: 13))),
+                      PopupMenuItem(value: 'trash', child: Text('Move to Trash', style: TextStyle(fontSize: 13, color: Colors.red))),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  Gradient _statusGradient(String value) {
-    final normalized = value.toLowerCase();
-    if (normalized.contains('complete')) return AppTheme.successGradient;
-    if (normalized.contains('process')) return AppTheme.infoGradient;
-    if (normalized.contains('cancel')) return AppTheme.dangerGradient;
-    if (normalized.contains('pending')) return AppTheme.warningGradient;
-    return AppTheme.premiumGradient;
-  }
 }
 
-class _InlineInfo extends StatelessWidget {
-  const _InlineInfo({required this.icon, required this.text});
-  final IconData icon;
+class _SoftBadge extends StatelessWidget {
+  const _SoftBadge({required this.text, required this.bgColor, required this.textColor});
   final String text;
+  final Color bgColor;
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(children: [
-        Icon(icon, color: AppTheme.muted2, size: 16),
-        const SizedBox(width: 7),
-        Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w600, fontSize: 12.5))),
-      ]),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(6)), // Subtle rounded corners
+      child: Text(text, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textColor, letterSpacing: 0.5)),
     );
   }
 }
@@ -664,31 +740,25 @@ class _FilterChip extends StatelessWidget {
     final activeColor = color ?? AppTheme.primary;
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        avatar: color == null ? null : CircleAvatar(radius: 5, backgroundColor: color),
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        selectedColor: activeColor.withOpacity(.16),
-        labelStyle: TextStyle(fontWeight: FontWeight.w800, color: selected ? activeColor : null),
-        side: BorderSide(color: selected ? activeColor.withOpacity(.45) : Colors.black.withOpacity(.06)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? activeColor.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? activeColor : AppTheme.muted,
+              fontSize: 12.5,
+            ),
+          ),
+        ),
       ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, this.color, this.textColor});
-  final String text;
-  final Color? color;
-  final Color? textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: color ?? const Color(0xFFF2F5F6), borderRadius: BorderRadius.circular(99)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: textColor)),
     );
   }
 }
@@ -701,25 +771,25 @@ class _EmptyOrders extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 64,
-              height: 64,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: AppTheme.infoGradient,
-                borderRadius: BorderRadius.circular(22),
+                color: AppTheme.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.border),
               ),
-              child: const Icon(Icons.receipt_long_outlined, color: Colors.white, size: 30),
+              child: const Icon(Icons.inbox_outlined, color: AppTheme.muted, size: 36),
             ),
-            const SizedBox(height: 14),
-            const Text('No matching orders found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 16),
+            const Text('No orders found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.text)),
             const SizedBox(height: 6),
-            const Text('Try another search keyword, order status or payment filter.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.muted)),
-            const SizedBox(height: 14),
-            FilledButton.tonal(onPressed: onReset, child: const Text('Clear filters')),
+            const Text('Try adjusting your filters or search terms.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.muted, fontSize: 13)),
+            const SizedBox(height: 16),
+            TextButton(onPressed: onReset, child: const Text('Clear all filters')),
           ],
         ),
       ),
