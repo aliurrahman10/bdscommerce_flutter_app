@@ -264,7 +264,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     }
   }
 
-
   Future<void> _moveOrderToTrash() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -293,193 +292,279 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC), // Enterprise Soft BG
       appBar: AppBar(
-        title: Text('Order #${widget.orderId}'),
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        title: Text('Order #${widget.orderId}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         actions: [
-          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
+          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh, color: AppTheme.text)),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppTheme.text),
             onSelected: (value) {
               if (value == 'trash') _moveOrderToTrash();
             },
-            itemBuilder: (_) => const [PopupMenuItem(value: 'trash', child: Text('Move to Trash'))],
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'trash', child: Text('Move to Trash', style: TextStyle(color: AppTheme.danger))),
+            ],
           ),
         ],
       ),
       body: SafeArea(
         child: FutureBuilder<Map<String, dynamic>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
-          final payload = snapshot.data ?? {};
-          final order = (payload['orderResponse'] as Map<String, dynamic>)['order'] as Map<String, dynamic>;
-          final statuses = ((payload['statusesResponse'] as Map<String, dynamic>)['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-          final tools = payload['toolsResponse'] as Map<String, dynamic>;
-          final items = (order['items'] as List<dynamic>? ?? []);
-          final currentStatusId = order['order_status']?['id'] is int ? order['order_status']['id'] as int : int.tryParse(order['order_status']?['id']?.toString() ?? '');
-          final couriers = (tools['couriers'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-          final shipments = (tools['shipments'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-          final fraud = tools['fraud_assessment'] as Map<String, dynamic>?;
-          final bottomPadding = 24 + MediaQuery.of(context).viewPadding.bottom;
-          return ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
-            children: [
-              _OrderSummaryHero(order: order),
-              const SizedBox(height: 12),
-              _CustomerCard(order: order, onCopy: _copy, onCall: () => _call(order['mobile']), onWhatsApp: () => _whatsapp(order)),
-              const SizedBox(height: 12),
-              _StatusCard(statuses: statuses, currentStatusId: currentStatusId, selectedStatus: _selectedStatus, updating: _updating, onChanged: (v) => setState(() => _selectedStatus = v), onUpdate: _updateStatus),
-              const SizedBox(height: 12),
-              _CourierCard(
-                couriers: couriers,
-                shipments: shipments,
-                selectedCourier: _selectedCourier,
-                pathaoCities: _pathaoCities,
-                pathaoZones: _pathaoZones,
-                pathaoAreas: _pathaoAreas,
-                selectedCityId: _selectedCityId,
-                selectedZoneId: _selectedZoneId,
-                selectedAreaId: _selectedAreaId,
-                loadingCities: _loadingCities,
-                loadingZones: _loadingZones,
-                loadingAreas: _loadingAreas,
-                locationId: _locationId,
-                locationName: _locationName,
-                sending: _sendingCourier,
-                onCourierChanged: (v) {
-                  setState(() => _selectedCourier = v);
-                  if (v == 'pathao') _loadPathaoCities();
-                },
-                onCityChanged: (id) { if (id != null) _loadPathaoZones(id); },
-                onZoneChanged: (id) { if (id != null) _loadPathaoAreas(id); },
-                onAreaChanged: (id) => setState(() => _selectedAreaId = id),
-                onSend: _sendCourier,
-              ),
-              const SizedBox(height: 12),
-              _FraudCard(
-                fraud: fraud,
-                checking: _checkingFraud,
-                decision: _decision,
-                noteCtrl: _decisionNoteCtrl,
-                onCheck: _runFraudCheck,
-                onDecisionChanged: (v) => setState(() => _decision = v),
-                onSaveDecision: _saveFraudDecision,
-              ),
-              const SizedBox(height: 18),
-              const Text('Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
-              ...items.map((raw) {
-                final item = raw as Map<String, dynamic>;
-                return Card(child: ListTile(title: Text(item['product_name']?.toString() ?? 'Product', style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('Qty: ${item['qty']} • Price: ${item['price']}'), trailing: Text('৳ ${item['subtotal'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w900))));
-              }),
-            ],
-          );
-        },
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+            if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+            
+            final payload = snapshot.data ?? {};
+            final order = (payload['orderResponse'] as Map<String, dynamic>)['order'] as Map<String, dynamic>;
+            final statuses = ((payload['statusesResponse'] as Map<String, dynamic>)['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+            final tools = payload['toolsResponse'] as Map<String, dynamic>;
+            final items = (order['items'] as List<dynamic>? ?? []);
+            final currentStatusId = order['order_status']?['id'] is int ? order['order_status']['id'] as int : int.tryParse(order['order_status']?['id']?.toString() ?? '');
+            final couriers = (tools['couriers'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+            final shipments = (tools['shipments'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+            final fraud = tools['fraud_assessment'] as Map<String, dynamic>?;
+            final bottomPadding = 32 + MediaQuery.of(context).viewPadding.bottom;
+            
+            return ListView(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
+              children: [
+                _UnifiedProfileCard(
+                  order: order,
+                  onCopy: _copy,
+                  onCall: () => _call(order['mobile']),
+                  onWhatsApp: () => _whatsapp(order),
+                ),
+                const SizedBox(height: 16),
+                
+                _StatusCard(
+                  statuses: statuses,
+                  currentStatusId: currentStatusId,
+                  selectedStatus: _selectedStatus,
+                  updating: _updating,
+                  onChanged: (v) => setState(() => _selectedStatus = v),
+                  onUpdate: _updateStatus,
+                ),
+                const SizedBox(height: 12),
+                
+                _CourierCard(
+                  couriers: couriers,
+                  shipments: shipments,
+                  selectedCourier: _selectedCourier,
+                  pathaoCities: _pathaoCities,
+                  pathaoZones: _pathaoZones,
+                  pathaoAreas: _pathaoAreas,
+                  selectedCityId: _selectedCityId,
+                  selectedZoneId: _selectedZoneId,
+                  selectedAreaId: _selectedAreaId,
+                  loadingCities: _loadingCities,
+                  loadingZones: _loadingZones,
+                  loadingAreas: _loadingAreas,
+                  locationId: _locationId,
+                  locationName: _locationName,
+                  sending: _sendingCourier,
+                  onCourierChanged: (v) {
+                    setState(() => _selectedCourier = v);
+                    if (v == 'pathao') _loadPathaoCities();
+                  },
+                  onCityChanged: (id) { if (id != null) _loadPathaoZones(id); },
+                  onZoneChanged: (id) { if (id != null) _loadPathaoAreas(id); },
+                  onAreaChanged: (id) => setState(() => _selectedAreaId = id),
+                  onSend: _sendCourier,
+                ),
+                const SizedBox(height: 12),
+                
+                _FraudCard(
+                  fraud: fraud,
+                  checking: _checkingFraud,
+                  decision: _decision,
+                  noteCtrl: _decisionNoteCtrl,
+                  onCheck: _runFraudCheck,
+                  onDecisionChanged: (v) => setState(() => _decision = v),
+                  onSaveDecision: _saveFraudDecision,
+                ),
+                const SizedBox(height: 24),
+                
+                const Padding(
+                  padding: EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text('ORDER ITEMS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.muted2, letterSpacing: 1.2)),
+                ),
+                _OrderItemsTable(items: items, total: order['total']?.toString() ?? '0'),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _OrderSummaryHero extends StatelessWidget {
-  const _OrderSummaryHero({required this.order});
+// 1. Unified Enterprise Profile Card (Replaces Hero + Customer Card)
+class _UnifiedProfileCard extends StatelessWidget {
+  const _UnifiedProfileCard({required this.order, required this.onCopy, required this.onCall, required this.onWhatsApp});
   final Map<String, dynamic> order;
+  final Future<void> Function(String label, Object? value) onCopy;
+  final VoidCallback onCall;
+  final VoidCallback onWhatsApp;
+
+  Color? _parseColor(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    var value = raw.trim();
+    if (value.startsWith('#')) value = value.substring(1);
+    if (value.length == 6) value = 'FF$value';
+    final parsed = int.tryParse(value, radix: 16);
+    return parsed == null ? null : Color(parsed);
+  }
 
   @override
   Widget build(BuildContext context) {
     final statusName = order['order_status']?['name']?.toString() ?? order['status']?.toString() ?? 'N/A';
-    final payment = order['payment_status']?.toString() ?? 'unpaid';
+    final statusColor = _parseColor(order['order_status']?['color']?.toString()) ?? AppTheme.primary;
+    final paymentStatus = order['payment_status']?.toString() ?? 'unpaid';
+    final isPaid = paymentStatus.toLowerCase() == 'paid';
+    final hasPhone = (order['mobile']?.toString() ?? '').trim().isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: AppTheme.glowShadow(),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2))],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(right: -18, top: -22, child: Icon(Icons.shopping_bag_rounded, color: Colors.white.withOpacity(.10), size: 110)),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: Colors.white.withOpacity(.14), borderRadius: BorderRadius.circular(17), border: Border.all(color: Colors.white.withOpacity(.18))),
-                child: const Icon(Icons.receipt_long_rounded, color: Colors.white),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(.13), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.18))),
-                child: Text(statusName, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900)),
-              ),
-            ]),
-            const SizedBox(height: 14),
-            Text('Order #${order['id']}', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900, height: 1.1)),
-            const SizedBox(height: 7),
-            Text(order['customer_name']?.toString() ?? 'Customer', style: TextStyle(color: Colors.white.withOpacity(.86), fontWeight: FontWeight.w700, fontSize: 14.5)),
-            const SizedBox(height: 13),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              _HeroPill(icon: Icons.payments_rounded, text: '৳ ${order['total'] ?? 0}'),
-              _HeroPill(icon: Icons.credit_card_rounded, text: payment),
-              _HeroPill(icon: Icons.storefront_rounded, text: order['channel']?.toString() ?? 'Store'),
-            ]),
-          ]),
+          // Header: Amount & Badges
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('৳ ${order['total'] ?? 0}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1)),
+                      const SizedBox(height: 6),
+                      Text(order['created_at']?.toString() ?? 'Recent order', style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _SoftBadge(text: statusName, bgColor: statusColor.withOpacity(0.12), textColor: statusColor),
+                    const SizedBox(height: 6),
+                    _SoftBadge(
+                      text: paymentStatus.toUpperCase(), 
+                      bgColor: isPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF9C3), 
+                      textColor: isPaid ? const Color(0xFF166534) : const Color(0xFF854D0E)
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          
+          // Customer Details
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.person_rounded, color: AppTheme.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        order['customer_name']?.toString() ?? 'Customer', 
+                        maxLines: 1, overflow: TextOverflow.ellipsis, 
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _InfoRow(icon: Icons.phone_outlined, text: order['mobile']?.toString() ?? '', onCopy: () => onCopy('Phone', order['mobile'])),
+                const SizedBox(height: 8),
+                _InfoRow(icon: Icons.location_on_outlined, text: order['address']?.toString() ?? '', onCopy: () => onCopy('Address', order['address'])),
+                
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _SmallDetail(label: 'Method', value: order['payment_method']?.toString() ?? 'N/A'),
+                    const SizedBox(width: 16),
+                    _SmallDetail(label: 'Channel', value: order['channel']?.toString() ?? 'Store'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // Action Buttons Bottom
+          if (hasPhone) ...[
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.text, padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16)))
+                    ),
+                    onPressed: onCall,
+                    icon: const Icon(Icons.call_rounded, size: 18, color: AppTheme.primary),
+                    label: const Text('Call', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                Container(width: 1, height: 24, color: const Color(0xFFF1F5F9)),
+                Expanded(
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.text, padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomRight: Radius.circular(16)))
+                    ),
+                    onPressed: onWhatsApp,
+                    icon: const Icon(Icons.chat_bubble_rounded, size: 18, color: Color(0xFF25D366)),
+                    label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ]
         ],
       ),
     );
   }
 }
 
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(.13), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.16))),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: Colors.white, size: 14), const SizedBox(width: 5), Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11.5))]),
-      );
-}
-
-class _CustomerCard extends StatelessWidget {
-  const _CustomerCard({required this.order, required this.onCopy, required this.onCall, required this.onWhatsApp});
-  final Map<String, dynamic> order;
-  final Future<void> Function(String label, Object? value) onCopy;
-  final VoidCallback onCall;
-  final VoidCallback onWhatsApp;
+class _SmallDetail extends StatelessWidget {
+  const _SmallDetail({required this.label, required this.value});
+  final String label, value;
   @override
   Widget build(BuildContext context) {
-    final hasPhone = (order['mobile']?.toString() ?? '').trim().isNotEmpty;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(width: 42, height: 42, decoration: BoxDecoration(gradient: AppTheme.infoGradient, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.person_rounded, color: Colors.white)),
-            const SizedBox(width: 11),
-            Expanded(child: Text(order['customer_name']?.toString() ?? 'Customer', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-          ]),
-          const SizedBox(height: 10),
-          _InfoRow(icon: Icons.phone_outlined, text: order['mobile']?.toString() ?? '', onCopy: () => onCopy('Phone', order['mobile'])),
-          _InfoRow(icon: Icons.location_on_outlined, text: order['address']?.toString() ?? '', onCopy: () => onCopy('Address', order['address'])),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: OutlinedButton.icon(onPressed: hasPhone ? onCall : null, icon: const Icon(Icons.call_rounded), label: const Text('Call'))),
-            const SizedBox(width: 10),
-            Expanded(child: FilledButton.icon(onPressed: hasPhone ? onWhatsApp : null, icon: const Icon(Icons.chat_rounded), label: const Text('WhatsApp'))),
-          ]),
-          const Divider(height: 24),
-          Row(children: [Expanded(child: _MiniMetric(label: 'Total', value: '৳ ${order['total'] ?? 0}')), Expanded(child: _MiniMetric(label: 'Payment', value: order['payment_status']?.toString() ?? 'unpaid'))]),
-          const SizedBox(height: 8),
-          Row(children: [Expanded(child: _MiniMetric(label: 'Method', value: order['payment_method']?.toString() ?? 'N/A')), Expanded(child: _MiniMetric(label: 'Channel', value: order['channel']?.toString() ?? 'N/A'))]),
-        ]),
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.text)),
+        ],
       ),
     );
   }
 }
 
+// 2. Status Card (Flat Design)
 class _StatusCard extends StatelessWidget {
   const _StatusCard({required this.statuses, required this.currentStatusId, required this.selectedStatus, required this.updating, required this.onChanged, required this.onUpdate});
   final List<Map<String, dynamic>> statuses;
@@ -489,61 +574,6 @@ class _StatusCard extends StatelessWidget {
   final ValueChanged<int?> onChanged;
   final VoidCallback onUpdate;
 
-  @override
-  Widget build(BuildContext context) {
-    Map<String, dynamic>? current;
-    for (final status in statuses) {
-      if (int.tryParse(status['id']?.toString() ?? '') == (selectedStatus ?? currentStatusId)) {
-        current = status;
-        break;
-      }
-    }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(width: 40, height: 40, decoration: BoxDecoration(gradient: AppTheme.successGradient, borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.fact_check_rounded, color: Colors.white)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Order Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              Text(current?['name']?.toString() ?? 'Select next status', style: const TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w600, fontSize: 12)),
-            ])),
-          ]),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            value: selectedStatus ?? currentStatusId,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Order status'),
-            selectedItemBuilder: (context) => statuses.map((s) {
-              return _StatusDropdownLabel(
-                name: s['name'].toString(),
-                color: _parseStatusColor(s['color']?.toString()),
-              );
-            }).toList(),
-            items: statuses.map((s) {
-              final color = _parseStatusColor(s['color']?.toString());
-              return DropdownMenuItem<int>(
-                value: int.parse(s['id'].toString()),
-                child: _StatusDropdownLabel(name: s['name'].toString(), color: color),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: updating ? null : onUpdate,
-              icon: updating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.update),
-              label: Text(updating ? 'Updating...' : 'Update Status'),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Color? _parseStatusColor(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     var value = raw.trim();
@@ -552,64 +582,58 @@ class _StatusCard extends StatelessWidget {
     final parsed = int.tryParse(value, radix: 16);
     return parsed == null ? null : Color(parsed);
   }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({this.color});
-  final Color? color;
-  @override
-  Widget build(BuildContext context) => Container(width: 10, height: 10, decoration: BoxDecoration(color: color ?? AppTheme.primary, shape: BoxShape.circle));
-}
-
-class _StatusDropdownLabel extends StatelessWidget {
-  const _StatusDropdownLabel({required this.name, this.color});
-  final String name;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _StatusDot(color: color),
-        const SizedBox(width: 8),
-        Flexible(
-          fit: FlexFit.loose,
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
+    return _FlatToolCard(
+      icon: Icons.fact_check_rounded,
+      iconColor: AppTheme.success,
+      title: 'Update Status',
+      child: Column(
+        children: [
+          DropdownButtonFormField<int>(
+            value: selectedStatus ?? currentStatusId,
+            isExpanded: true,
+            icon: const Icon(Icons.expand_more_rounded, color: AppTheme.muted),
+            decoration: InputDecoration(
+              filled: true, fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+            selectedItemBuilder: (context) => statuses.map((s) => _StatusDropdownLabel(name: s['name'].toString(), color: _parseStatusColor(s['color']?.toString()))).toList(),
+            items: statuses.map((s) => DropdownMenuItem<int>(
+              value: int.parse(s['id'].toString()),
+              child: _StatusDropdownLabel(name: s['name'].toString(), color: _parseStatusColor(s['color']?.toString())),
+            )).toList(),
+            onChanged: onChanged,
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: updating ? null : onUpdate,
+              child: updating 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                : const Text('Save Status', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
+// 3. Courier Card (Flat Design)
 class _CourierCard extends StatelessWidget {
   const _CourierCard({
-    required this.couriers,
-    required this.shipments,
-    required this.selectedCourier,
-    required this.pathaoCities,
-    required this.pathaoZones,
-    required this.pathaoAreas,
-    required this.selectedCityId,
-    required this.selectedZoneId,
-    required this.selectedAreaId,
-    required this.loadingCities,
-    required this.loadingZones,
-    required this.loadingAreas,
-    required this.locationId,
-    required this.locationName,
-    required this.sending,
-    required this.onCourierChanged,
-    required this.onCityChanged,
-    required this.onZoneChanged,
-    required this.onAreaChanged,
-    required this.onSend,
+    required this.couriers, required this.shipments, required this.selectedCourier, required this.pathaoCities,
+    required this.pathaoZones, required this.pathaoAreas, required this.selectedCityId, required this.selectedZoneId,
+    required this.selectedAreaId, required this.loadingCities, required this.loadingZones, required this.loadingAreas,
+    required this.locationId, required this.locationName, required this.sending, required this.onCourierChanged,
+    required this.onCityChanged, required this.onZoneChanged, required this.onAreaChanged, required this.onSend,
   });
+  // Props matching original exactly[cite: 2]
   final List<Map<String, dynamic>> couriers;
   final List<Map<String, dynamic>> shipments;
   final String selectedCourier;
@@ -635,57 +659,110 @@ class _CourierCard extends StatelessWidget {
     return items.map((item) {
       final id = locationId(item);
       if (id == null) return null;
-      return DropdownMenuItem<int>(value: id, child: Text(locationName(item)));
+      return DropdownMenuItem<int>(value: id, child: Text(locationName(item), style: const TextStyle(fontSize: 14)));
     }).whereType<DropdownMenuItem<int>>().toList();
+  }
+
+  InputDecoration _inputDeco(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(fontSize: 13, color: AppTheme.muted),
+      filled: true, fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final activeCouriers = couriers.where((c) => c['is_active'] == true).toList();
     final items = (activeCouriers.isEmpty ? couriers : activeCouriers);
-    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Courier Booking', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 10),
-      if (items.isEmpty) const Text('No courier configured yet. Add credentials from Courier Settings.'),
-      if (items.isNotEmpty) DropdownButtonFormField<String>(value: items.any((c) => c['key'] == selectedCourier) ? selectedCourier : items.first['key'].toString(), decoration: const InputDecoration(labelText: 'Courier'), items: items.map((c) => DropdownMenuItem<String>(value: c['key'].toString(), child: Text('${c['label']} ${c['is_active'] == true ? '' : '(inactive)'}'))).toList(), onChanged: (v) { if (v != null) onCourierChanged(v); }),
-      if (selectedCourier == 'pathao') ...[
-        const SizedBox(height: 10),
-        if (loadingCities) const LinearProgressIndicator(),
-        DropdownButtonFormField<int>(
-          value: _locationItems(pathaoCities).any((e) => e.value == selectedCityId) ? selectedCityId : null,
-          decoration: const InputDecoration(labelText: 'Pathao City'),
-          items: _locationItems(pathaoCities),
-          onChanged: onCityChanged,
-        ),
-        const SizedBox(height: 10),
-        if (loadingZones) const LinearProgressIndicator(),
-        DropdownButtonFormField<int>(
-          value: _locationItems(pathaoZones).any((e) => e.value == selectedZoneId) ? selectedZoneId : null,
-          decoration: const InputDecoration(labelText: 'Pathao Zone'),
-          items: _locationItems(pathaoZones),
-          onChanged: selectedCityId == null ? null : onZoneChanged,
-        ),
-        const SizedBox(height: 10),
-        if (loadingAreas) const LinearProgressIndicator(),
-        DropdownButtonFormField<int>(
-          value: _locationItems(pathaoAreas).any((e) => e.value == selectedAreaId) ? selectedAreaId : null,
-          decoration: const InputDecoration(labelText: 'Pathao Area'),
-          items: _locationItems(pathaoAreas),
-          onChanged: selectedZoneId == null ? null : onAreaChanged,
-        ),
-        const SizedBox(height: 6),
-        const Text('City select korle Zone load hobe, Zone select korle Area load hobe.', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
-      ],
-      const SizedBox(height: 12),
-      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: sending || items.isEmpty ? null : onSend, icon: sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.local_shipping_outlined), label: Text(sending ? 'Sending...' : 'Send to Courier'))),
-      const SizedBox(height: 12),
-      const Text('Shipment History', style: TextStyle(fontWeight: FontWeight.w900)),
-      if (shipments.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('No shipment yet.')),
-      for (final s in shipments) ListTile(contentPadding: EdgeInsets.zero, leading: Icon(s['status'] == 'sent' ? Icons.check_circle : Icons.info_outline, color: s['status'] == 'sent' ? AppTheme.primary : Colors.orange), title: Text('${s['courier']} • ${s['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('Tracking: ${s['tracking_code'] ?? s['consignment_id'] ?? 'N/A'}')),
-    ])));
+
+    return _FlatToolCard(
+      icon: Icons.local_shipping_rounded,
+      iconColor: AppTheme.primary,
+      title: 'Courier Booking',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (items.isEmpty) const Text('No courier configured yet.', style: TextStyle(color: AppTheme.muted, fontSize: 13)),
+          if (items.isNotEmpty) 
+            DropdownButtonFormField<String>(
+              value: items.any((c) => c['key'] == selectedCourier) ? selectedCourier : items.first['key'].toString(), 
+              decoration: _inputDeco('Select Courier'),
+              items: items.map((c) => DropdownMenuItem<String>(value: c['key'].toString(), child: Text('${c['label']} ${c['is_active'] == true ? '' : '(inactive)'}', style: const TextStyle(fontSize: 14)))).toList(), 
+              onChanged: (v) { if (v != null) onCourierChanged(v); }
+            ),
+          
+          if (selectedCourier == 'pathao') ...[
+            const SizedBox(height: 12),
+            if (loadingCities) const LinearProgressIndicator(minHeight: 2),
+            DropdownButtonFormField<int>(
+              value: _locationItems(pathaoCities).any((e) => e.value == selectedCityId) ? selectedCityId : null,
+              decoration: _inputDeco('Pathao City'),
+              items: _locationItems(pathaoCities),
+              onChanged: onCityChanged,
+            ),
+            const SizedBox(height: 10),
+            if (loadingZones) const LinearProgressIndicator(minHeight: 2),
+            DropdownButtonFormField<int>(
+              value: _locationItems(pathaoZones).any((e) => e.value == selectedZoneId) ? selectedZoneId : null,
+              decoration: _inputDeco('Pathao Zone'),
+              items: _locationItems(pathaoZones),
+              onChanged: selectedCityId == null ? null : onZoneChanged,
+            ),
+            const SizedBox(height: 10),
+            if (loadingAreas) const LinearProgressIndicator(minHeight: 2),
+            DropdownButtonFormField<int>(
+              value: _locationItems(pathaoAreas).any((e) => e.value == selectedAreaId) ? selectedAreaId : null,
+              decoration: _inputDeco('Pathao Area'),
+              items: _locationItems(pathaoAreas),
+              onChanged: selectedZoneId == null ? null : onAreaChanged,
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity, 
+            child: FilledButton.tonal(
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: sending || items.isEmpty ? null : onSend, 
+              child: sending 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                : const Text('Send to Courier', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14))
+            )
+          ),
+
+          if (shipments.isNotEmpty) ...[
+            const Padding(padding: EdgeInsets.only(top: 20, bottom: 8), child: Text('Shipment History', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppTheme.muted2))),
+            for (final s in shipments) 
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
+                child: Row(
+                  children: [
+                    Icon(s['status'] == 'sent' ? Icons.check_circle_rounded : Icons.info_rounded, color: s['status'] == 'sent' ? AppTheme.primary : AppTheme.warning, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${s['courier']} • ${s['status']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                          Text('Tracking: ${s['tracking_code'] ?? s['consignment_id'] ?? 'N/A'}', style: const TextStyle(color: AppTheme.muted, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ]
+        ],
+      ),
+    );
   }
 }
 
+// 4. Fraud Checker Card (Flat Design)
 class _FraudCard extends StatelessWidget {
   const _FraudCard({required this.fraud, required this.checking, required this.decision, required this.noteCtrl, required this.onCheck, required this.onDecisionChanged, required this.onSaveDecision});
   final Map<String, dynamic>? fraud;
@@ -695,23 +772,190 @@ class _FraudCard extends StatelessWidget {
   final VoidCallback onCheck;
   final ValueChanged<String> onDecisionChanged;
   final VoidCallback onSaveDecision;
+
   @override
   Widget build(BuildContext context) {
     final suggestion = fraud?['suggestion'] as Map<String, dynamic>?;
-    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Fraud Checker', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 8),
-      Text('Decision: ${fraud?['final_decision'] ?? 'Not decided'}', style: const TextStyle(fontWeight: FontWeight.bold)),
-      if (suggestion != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Suggested: ${suggestion['suggested_decision'] ?? 'N/A'} • Risk: ${suggestion['risk_band'] ?? 'N/A'}')),
-      const SizedBox(height: 10),
-      SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: checking ? null : onCheck, icon: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.security_outlined), label: Text(checking ? 'Checking...' : 'Run Fraud Check'))),
-      const SizedBox(height: 10),
-      DropdownButtonFormField<String>(value: decision, decoration: const InputDecoration(labelText: 'Final decision'), items: const ['APPROVE_COD', 'REQUIRE_OTP', 'HOLD_CALL_VERIFICATION', 'REQUIRE_ADVANCE', 'CANCEL'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) { if (v != null) onDecisionChanged(v); }),
-      const SizedBox(height: 10),
-      TextField(controller: noteCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Decision note')),
-      const SizedBox(height: 10),
-      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: onSaveDecision, icon: const Icon(Icons.save_outlined), label: const Text('Save Fraud Decision'))),
-    ])));
+    return _FlatToolCard(
+      icon: Icons.shield_rounded,
+      iconColor: AppTheme.danger,
+      title: 'Fraud Checker',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: _SmallDetail(label: 'Current Decision', value: fraud?['final_decision']?.toString() ?? 'Not decided')),
+              if (suggestion != null) Expanded(child: _SmallDetail(label: 'Suggested Risk', value: suggestion['risk_band']?.toString() ?? 'N/A')),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity, 
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: checking ? null : onCheck, 
+              child: checking ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Run Auto Check', style: TextStyle(fontWeight: FontWeight.w700))
+            )
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: decision, 
+            decoration: InputDecoration(
+              labelText: 'Manual Decision', labelStyle: const TextStyle(fontSize: 13, color: AppTheme.muted),
+              filled: true, fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+            items: const ['APPROVE_COD', 'REQUIRE_OTP', 'HOLD_CALL_VERIFICATION', 'REQUIRE_ADVANCE', 'CANCEL'].map((v) => DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 13)))).toList(), 
+            onChanged: (v) { if (v != null) onDecisionChanged(v); }
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: noteCtrl, maxLines: 2, 
+            decoration: InputDecoration(
+              hintText: 'Add internal note...', hintStyle: const TextStyle(fontSize: 13, color: AppTheme.muted),
+              filled: true, fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(14),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            )
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity, 
+            child: FilledButton.tonal(
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: onSaveDecision, 
+              child: const Text('Save Decision', style: TextStyle(fontWeight: FontWeight.w700))
+            )
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 5. Invoice Style Items Table
+class _OrderItemsTable extends StatelessWidget {
+  const _OrderItemsTable({required this.items, required this.total});
+  final List<dynamic> items;
+  final String total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          ...items.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value as Map<String, dynamic>;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36, alignment: Alignment.center,
+                        decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.border)),
+                        child: Text('${item['qty']}x', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppTheme.muted)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item['product_name']?.toString() ?? 'Product', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.text)),
+                            const SizedBox(height: 2),
+                            Text('৳ ${item['price']} each', style: const TextStyle(color: AppTheme.muted, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Text('৳ ${item['subtotal'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                    ],
+                  ),
+                ),
+                if (index < items.length - 1) const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              ],
+            );
+          }),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.muted2)),
+                Text('৳ $total', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primary)),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// UTILITY WIDGETS
+class _FlatToolCard extends StatelessWidget {
+  const _FlatToolCard({required this.icon, required this.iconColor, required this.title, required this.child});
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.text)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SoftBadge extends StatelessWidget {
+  const _SoftBadge({required this.text, required this.bgColor, required this.textColor});
+  final String text;
+  final Color bgColor;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textColor, letterSpacing: 0.5)),
+    );
   }
 }
 
@@ -720,14 +964,49 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
   final VoidCallback onCopy;
+
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Row(children: [Icon(icon, size: 18, color: AppTheme.primary), const SizedBox(width: 8), Expanded(child: Text(text.isEmpty ? 'N/A' : text)), IconButton(onPressed: text.isEmpty ? null : onCopy, icon: const Icon(Icons.copy, size: 18))]));
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.muted),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text.isEmpty ? 'N/A' : text, style: const TextStyle(fontSize: 13, color: AppTheme.muted2))),
+          if (text.isNotEmpty)
+            InkWell(
+              onTap: onCopy,
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.copy_rounded, size: 14, color: AppTheme.primary)),
+            )
+        ],
+      ),
+    );
+  }
 }
 
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({required this.label, required this.value});
-  final String label;
-  final String value;
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({this.color});
+  final Color? color;
   @override
-  Widget build(BuildContext context) => Container(margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF2F5F6), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900))]));
+  Widget build(BuildContext context) => Container(width: 10, height: 10, decoration: BoxDecoration(color: color ?? AppTheme.primary, shape: BoxShape.circle));
+}
+
+class _StatusDropdownLabel extends StatelessWidget {
+  const _StatusDropdownLabel({required this.name, this.color});
+  final String name;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _StatusDot(color: color),
+        const SizedBox(width: 8),
+        Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+      ],
+    );
+  }
 }
